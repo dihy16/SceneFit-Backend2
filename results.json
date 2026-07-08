@@ -1,0 +1,186 @@
+{
+  "method": "baseline-clip-img2img",
+  "count": 10,
+  "results": [
+    {
+      "name_clothes": "m1_light_12.png",
+      "similarity": 0.5376977920532227,
+      "rerank_score": 0.5376977920532227
+    },
+    {
+      "name_clothes": "m5_brown_8.png",
+      "similarity": 0.5319127440452576,
+      "rerank_score": 0.5319127440452576
+    },
+    {
+      "name_clothes": "m5_brown_9.png",
+      "similarity": 0.5316189527511597,
+      "rerank_score": 0.5316189527511597
+    },
+    {
+      "name_clothes": "m1_light_18.png",
+      "similarity": 0.5287796258926392,
+      "rerank_score": 0.5287796258926392
+    },
+    {
+      "name_clothes": "m6_brown_5.png",
+      "similarity": 0.5225841999053955,
+      "rerank_score": 0.5225841999053955
+    },
+    {
+      "name_clothes": "m1_light_7.png",
+      "similarity": 0.5222921967506409,
+      "rerank_score": 0.5222921967506409
+    },
+    {
+      "name_clothes": "m1_brown_4.png",
+      "similarity": 0.521356463432312,
+      "rerank_score": 0.521356463432312
+    },
+    {
+      "name_clothes": "m5_brown_7.png",
+      "similarity": 0.5176643133163452,
+      "rerank_score": 0.5176643133163452
+    },
+    {
+      "name_clothes": "m5_brown_6.png",
+      "similarity": 0.5167598128318787,
+      "rerank_score": 0.5167598128318787
+    },
+    {
+      "name_clothes": "m1_dark_4.png",
+      "similarity": 0.5121983289718628,
+      "rerank_score": 0.5121983289718628
+    }
+  ]
+}
+
+
+
+
+{
+  "method": "vlm-faiss-composed-retrieval",
+  "count": 10,
+  "scene_caption": "This bright, sunlit outdoor scene with mossy rocks, scattered trees, and a clear blue sky suggests casual, nature-oriented attire suitable for a relaxed day outdoors in mild weather, with earthy tones and lightweight fabrics ideal for exploration or leisure.",
+  "results": [
+    {
+      "name_clothes": "m1_brown_5.png",
+      "similarity": 0.43620163202285767,
+      "rerank_score": 0.41561001539230347
+    },
+    {
+      "name_clothes": "m1_light_2.png",
+      "similarity": 0.4318081736564636,
+      "rerank_score": 0.394328773021698
+    },
+    {
+      "name_clothes": "m1_light_18.png",
+      "similarity": 0.44758880138397217,
+      "rerank_score": 0.385324627161026
+    },
+    {
+      "name_clothes": "m1_light_7.png",
+      "similarity": 0.4395168721675873,
+      "rerank_score": 0.3781675696372986
+    },
+    {
+      "name_clothes": "m5_brown_7.png",
+      "similarity": 0.4365791380405426,
+      "rerank_score": 0.37317904829978943
+    },
+    {
+      "name_clothes": "m1_light_12.png",
+      "similarity": 0.4559721350669861,
+      "rerank_score": 0.36432233452796936
+    },
+    {
+      "name_clothes": "m5_brown_2.png",
+      "similarity": 0.433725506067276,
+      "rerank_score": 0.34856873750686646
+    },
+    {
+      "name_clothes": "m1_brown_4.png",
+      "similarity": 0.4354374408721924,
+      "rerank_score": 0.3452177345752716
+    },
+    {
+      "name_clothes": "m5_brown_8.png",
+      "similarity": 0.4395834505558014,
+      "rerank_score": 0.3185296654701233
+    },
+    {
+      "name_clothes": "m5_brown_9.png",
+      "similarity": 0.4392850995063782,
+      "rerank_score": 0.316882461309433
+    }
+  ],
+  "best": {
+    "name_clothes": "m1_brown_5.png",
+    "similarity": 0.43620163202285767,
+    "rerank_score": 0.41561001539230347
+  }
+}
+
+
+{
+  "method": "vlm-faiss-composed-retrieval",
+  "count": 10,
+  "scene_caption": "This vibrant, sunlit outdoor scene features a field of purple flowers under a bright blue sky, surrounded by cascading purple trees and rocky terrain, suggesting a casual, cheerful spring or summer day perfect for light, colorful, and breathable clothing that complements the vivid purple and green tones.",
+  "results": [
+    {
+      "name_clothes": "avatars_ad56d7730bfd427aaf9677c0a2832786.png",
+      "similarity": 0.2713354825973511,
+      "rerank_score": 0.33645108342170715
+    },
+    {
+      "name_clothes": "avatars_7f8a319e60a442a09b3363b0efc63de5.png",
+      "similarity": 0.26883774995803833,
+      "rerank_score": 0.3333745300769806
+    },
+    {
+      "name_clothes": "avatars_c4e36d88a50849e38f271f9570f04cf7.png",
+      "similarity": 0.27215754985809326,
+      "rerank_score": 0.3129391372203827
+    },
+    {
+      "name_clothes": "avatars_1f19e7485f824d95ba1236b22fce8620.png",
+      "similarity": 0.2811240553855896,
+      "rerank_score": 0.3053753077983856
+    },
+    {
+      "name_clothes": "avatars_25c9a73c21084d8c9de08c24a22479c4.png",
+      "similarity": 0.2754352390766144,
+      "rerank_score": 0.2988414168357849
+    },
+    {
+      "name_clothes": "avatars_0897ecda4c0249339070911a3a969206.png",
+      "similarity": 0.2830156683921814,
+      "rerank_score": 0.2913392186164856
+    },
+    {
+      "name_clothes": "avatars_44943d65275a4b29b08e692e9d91ce95.png",
+      "similarity": 0.26985442638397217,
+      "rerank_score": 0.28558698296546936
+    },
+    {
+      "name_clothes": "avatars_909f9eb4a670471b8365b42034b7e045.png",
+      "similarity": 0.2690908908843994,
+      "rerank_score": 0.27889981865882874
+    },
+    {
+      "name_clothes": "avatars_addb93897bec4bd2b9488b01ceb0bf9e.png",
+      "similarity": 0.27695006132125854,
+      "rerank_score": 0.26413965225219727
+    },
+    {
+      "name_clothes": "avatars_c57f656e23954722a64a62997787b03c.png",
+      "similarity": 0.26888835430145264,
+      "rerank_score": 0.2464873045682907
+    }
+  ],
+  "best": {
+    "name_clothes": "avatars_ad56d7730bfd427aaf9677c0a2832786.png",
+    "similarity": 0.2713354825973511,
+    "rerank_score": 0.33645108342170715
+  }
+}

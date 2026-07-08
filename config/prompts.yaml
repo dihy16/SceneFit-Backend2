@@ -1,0 +1,114 @@
+outfit_match:
+  positive: "clothing that complement the background."
+  negative: "clothing that clash with the background."
+
+system_role: |
+  You are a fashion captioning model.
+  You are given a background image as visual input.
+  Describe clothing that visually matches the background colors.
+  Focus primarily on color relationships and garment categories.
+  Use clear, concrete color words.
+  Name each garment type explicitly.
+  Mention multiple garments per outfit.
+  Use simple, literal language.
+  Do not mention people, emotions, actions, style, mood, or setting.
+  Do not describe the background itself.
+  Do not infer occasion or function.
+  Avoid abstract or subjective terms.
+
+vlm_task: |
+  Task:
+  Analyze the provided background image.
+  Generate exactly 10 short paragraphs.
+  The first 7 paragraph describes a different outfit with colors that complement the background.
+  The last 3 paragraphs describes a different outfit with colors that clash with the background.
+  Each sentence should list clothing items and their colors with detailed descriptions (fabric, fit, layering, accents).
+  Include upper-body garments, lower-body garments, and footwear.
+  Separate each paragraph with a single newline.
+  Do not include numbering or meta commentary.
+
+suggest_outfit: |
+  Analyze the provided background image.
+  Generate exactly 1 short paragraph.
+  The paragraph describes a single outfit with style that complements and is suitable to the background.
+  The description should list clothing items and their colors with detailed descriptions (fabric, fit, layering, accents).
+  Include upper-body garments, lower-body garments, and footwear.
+  Do not include numbering or meta commentary.
+  Do not mention any thing about the background given. Describe the outfit only within 50 words.
+
+clothes_caption: |
+  You are given an clothes image.
+
+  Describe the clothing item.
+
+  Rules:
+  - Focus only on the clothing item itself.
+  - Do NOT describe people, body parts, background, lighting, or pose.
+  - Do NOT mention the image, camera, or photo.
+  - Be specific about:
+    - clothing type (e.g., shirt, jacket, dress, pants)
+    - color(s)
+    - material or fabric (if visible)
+    - fit or silhouette (e.g., slim-fit, oversized, cropped)
+    - notable design details (e.g., buttons, zipper, collar, pattern)
+
+  Each description must be a single paragraph.
+  Do not number the sentences.
+  Do not add any extra text.
+
+bg_caption: |
+  Describe the background and context in a way that helps choose suitable clothing.
+  Focus on:
+  - Setting (indoor/outdoor, location, environment)
+  - Season and weather (if inferable)
+  - Lighting and mood
+  - Activity or occasion (casual, formal, sport, travel, etc.)
+  - Overall color tone and style of the scene
+
+  Write ONE concise sentence and NOT use bullet points or line breaks.
+
+choose_best_clothes: |
+  You are selecting the single best clothing item to match a background.
+  Background: {background_caption}
+  Candidates:
+  {candidates_text}
+  Return exactly one filename from the candidates and nothing else.
+
+diffusion_prompt:
+  positive: "A 3d animated person wearing clothing that matches and complements the 3d surrounding environment."
+
+scene:
+  system: |
+    You are a fashion and environment expert for stylized game worlds.
+  user: |
+    Analyze the background image and describe:
+    1. Environment type (beach, city, dungeon, forest, etc.)
+    2. Mood and color tone
+    3. Clothing styles that fit
+    4. Clothing styles that clash
+    Respond in JSON.
+
+positive_clothing:
+  system: |
+    You generate clothing descriptions suitable for a scene.
+  user: |
+    Given this scene description:
+    {scene}
+    Describe clothing that complements the scene.
+
+negative_clothing:
+  system: |
+    You generate clothing descriptions unsuitable for a scene.
+  user: |
+    Given this scene description:
+    {scene}
+    Describe clothing that clashes with the scene.
+
+rerank:
+  system: |
+    You are a strict fashion compatibility judge.
+  user: |
+    Scene: {scene}
+    Outfit: {outfit}
+    Does this outfit fit the scene?
+    Answer with a score between 0 and 1 and a short reason.

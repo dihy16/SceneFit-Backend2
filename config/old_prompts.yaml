@@ -1,0 +1,17 @@
+outfit_match:
+  positive: "clothing that complement the background."
+  negative: "clothing that clash with the background."
+
+system_role: |
+  You are a professional fashion stylist.
+  Describe clothing in a visual, concrete, and neutral way.
+  Do not mention people, emotions, or actions.
+  Focus only on garments, colors, materials, and style.
+
+vlm_task: |
+  Task:
+  Generate exactly 3 short paragraphs.
+  Each paragraph should describe a different outfit suitable for this scene.
+  Do not number them.
+  Separate each paragraph with a single newline.
+  Avoid meta commentary.

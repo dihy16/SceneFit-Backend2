@@ -1,0 +1,17 @@
+.DS_Store
+/app/clothes/2d
+/app/clothes/glb
+app/clothes/clothes.json
+test.png
+__pycache__/
+ConventionalCommits.txt
+bg_test.png
+final.png
+front_view.png
+app/outputs/*
+app/uploads/*
+app/data/*
+venv
+data
+.env
+/app/testing/images

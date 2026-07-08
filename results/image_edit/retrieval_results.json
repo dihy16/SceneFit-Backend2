@@ -1,0 +1,398 @@
+[
+  {
+    "gender": "male",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.36.17.png",
+    "edited_image_path": "data/cropped_clothes/27_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 95,
+        "score": 0.6801549196243286,
+        "clothes_path": "/content/app/data/2d/m6_light_1.png"
+      },
+      {
+        "id": 75,
+        "score": 0.6799719333648682,
+        "clothes_path": "/content/app/data/2d/m6_brown_1.png"
+      },
+      {
+        "id": 103,
+        "score": 0.6767247915267944,
+        "clothes_path": "/content/app/data/2d/m6_light_8.png"
+      },
+      {
+        "id": 94,
+        "score": 0.6750997304916382,
+        "clothes_path": "/content/app/data/2d/m6_dark_9.png"
+      },
+      {
+        "id": 84,
+        "score": 0.6679660081863403,
+        "clothes_path": "/content/app/data/2d/m6_brown_9.png"
+      }
+    ]
+  },
+  {
+    "gender": "female",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.36.17.png",
+    "edited_image_path": "data/cropped_clothes/28_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 17,
+        "score": 0.7372291684150696,
+        "clothes_path": "/content/app/data/2d/m1_light_11.png"
+      },
+      {
+        "id": 20,
+        "score": 0.722243070602417,
+        "clothes_path": "/content/app/data/2d/m1_light_14.png"
+      },
+      {
+        "id": 35,
+        "score": 0.6672618389129639,
+        "clothes_path": "/content/app/data/2d/m1_light_28.png"
+      },
+      {
+        "id": 31,
+        "score": 0.6623218655586243,
+        "clothes_path": "/content/app/data/2d/m1_light_24.png"
+      },
+      {
+        "id": 25,
+        "score": 0.6587865352630615,
+        "clothes_path": "/content/app/data/2d/m1_light_19.png"
+      }
+    ]
+  },
+  {
+    "gender": "male",
+    "bg_path": "data/bg/Screenshot 2026-01-04 at 11.53.25.png",
+    "edited_image_path": "data/cropped_clothes/29_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 5,
+        "score": 0.7321222424507141,
+        "clothes_path": "/content/app/data/2d/m1_brown_9.png"
+      },
+      {
+        "id": 84,
+        "score": 0.6944688558578491,
+        "clothes_path": "/content/app/data/2d/m6_brown_9.png"
+      },
+      {
+        "id": 103,
+        "score": 0.6715998649597168,
+        "clothes_path": "/content/app/data/2d/m6_light_8.png"
+      },
+      {
+        "id": 75,
+        "score": 0.6617312431335449,
+        "clothes_path": "/content/app/data/2d/m6_brown_1.png"
+      },
+      {
+        "id": 86,
+        "score": 0.6596723794937134,
+        "clothes_path": "/content/app/data/2d/m6_dark_10.png"
+      }
+    ]
+  },
+  {
+    "gender": "female",
+    "bg_path": "data/bg/Screenshot 2026-01-04 at 11.53.25.png",
+    "edited_image_path": "data/cropped_clothes/30_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 5,
+        "score": 0.736809253692627,
+        "clothes_path": "/content/app/data/2d/m1_brown_9.png"
+      },
+      {
+        "id": 86,
+        "score": 0.6914535164833069,
+        "clothes_path": "/content/app/data/2d/m6_dark_10.png"
+      },
+      {
+        "id": 103,
+        "score": 0.6806342005729675,
+        "clothes_path": "/content/app/data/2d/m6_light_8.png"
+      },
+      {
+        "id": 84,
+        "score": 0.6722970008850098,
+        "clothes_path": "/content/app/data/2d/m6_brown_9.png"
+      },
+      {
+        "id": 57,
+        "score": 0.6675677299499512,
+        "clothes_path": "/content/app/data/2d/m5_dark_2.png"
+      }
+    ]
+  },
+  {
+    "gender": "male",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.38.32.png",
+    "edited_image_path": "data/cropped_clothes/31_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 5,
+        "score": 0.6878674030303955,
+        "clothes_path": "/content/app/data/2d/m1_brown_9.png"
+      },
+      {
+        "id": 103,
+        "score": 0.677979588508606,
+        "clothes_path": "/content/app/data/2d/m6_light_8.png"
+      },
+      {
+        "id": 75,
+        "score": 0.6700779795646667,
+        "clothes_path": "/content/app/data/2d/m6_brown_1.png"
+      },
+      {
+        "id": 95,
+        "score": 0.6620477437973022,
+        "clothes_path": "/content/app/data/2d/m6_light_1.png"
+      },
+      {
+        "id": 86,
+        "score": 0.6516376733779907,
+        "clothes_path": "/content/app/data/2d/m6_dark_10.png"
+      }
+    ]
+  },
+  {
+    "gender": "female",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.38.32.png",
+    "edited_image_path": "data/cropped_clothes/32_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 20,
+        "score": 0.7522585391998291,
+        "clothes_path": "/content/app/data/2d/m1_light_14.png"
+      },
+      {
+        "id": 17,
+        "score": 0.748344898223877,
+        "clothes_path": "/content/app/data/2d/m1_light_11.png"
+      },
+      {
+        "id": 25,
+        "score": 0.7258309721946716,
+        "clothes_path": "/content/app/data/2d/m1_light_19.png"
+      },
+      {
+        "id": 29,
+        "score": 0.6974995136260986,
+        "clothes_path": "/content/app/data/2d/m1_light_22.png"
+      },
+      {
+        "id": 27,
+        "score": 0.6971775889396667,
+        "clothes_path": "/content/app/data/2d/m1_light_20.png"
+      }
+    ]
+  },
+  {
+    "gender": "male",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.48.16.png",
+    "edited_image_path": "data/cropped_clothes/33_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 86,
+        "score": 0.7361359000205994,
+        "clothes_path": "/content/app/data/2d/m6_dark_10.png"
+      },
+      {
+        "id": 84,
+        "score": 0.7214447259902954,
+        "clothes_path": "/content/app/data/2d/m6_brown_9.png"
+      },
+      {
+        "id": 57,
+        "score": 0.7209020853042603,
+        "clothes_path": "/content/app/data/2d/m5_dark_2.png"
+      },
+      {
+        "id": 65,
+        "score": 0.714679479598999,
+        "clothes_path": "/content/app/data/2d/m5_light_1.png"
+      },
+      {
+        "id": 94,
+        "score": 0.6936753988265991,
+        "clothes_path": "/content/app/data/2d/m6_dark_9.png"
+      }
+    ]
+  },
+  {
+    "gender": "female",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.48.16.png",
+    "edited_image_path": "data/cropped_clothes/34_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 5,
+        "score": 0.7346367835998535,
+        "clothes_path": "/content/app/data/2d/m1_brown_9.png"
+      },
+      {
+        "id": 2,
+        "score": 0.6697977185249329,
+        "clothes_path": "/content/app/data/2d/m1_brown_5.png"
+      },
+      {
+        "id": 14,
+        "score": 0.6555572748184204,
+        "clothes_path": "/content/app/data/2d/m1_dark_8.png"
+      },
+      {
+        "id": 16,
+        "score": 0.651860237121582,
+        "clothes_path": "/content/app/data/2d/m1_light_1.png"
+      },
+      {
+        "id": 9,
+        "score": 0.6500422954559326,
+        "clothes_path": "/content/app/data/2d/m1_dark_3.png"
+      }
+    ]
+  },
+  {
+    "gender": "male",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.48.41.png",
+    "edited_image_path": "data/cropped_clothes/35_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 77,
+        "score": 0.7970284223556519,
+        "clothes_path": "/content/app/data/2d/m6_brown_2.png"
+      },
+      {
+        "id": 101,
+        "score": 0.7300771474838257,
+        "clothes_path": "/content/app/data/2d/m6_light_6.png"
+      },
+      {
+        "id": 76,
+        "score": 0.708661675453186,
+        "clothes_path": "/content/app/data/2d/m6_brown_10.png"
+      },
+      {
+        "id": 57,
+        "score": 0.6998879313468933,
+        "clothes_path": "/content/app/data/2d/m5_dark_2.png"
+      },
+      {
+        "id": 85,
+        "score": 0.696797251701355,
+        "clothes_path": "/content/app/data/2d/m6_dark_1.png"
+      }
+    ]
+  },
+  {
+    "gender": "female",
+    "bg_path": "data/bg/Screenshot 2026-01-02 at 20.48.41.png",
+    "edited_image_path": "data/cropped_clothes/36_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 35,
+        "score": 0.7432546615600586,
+        "clothes_path": "/content/app/data/2d/m1_light_28.png"
+      },
+      {
+        "id": 29,
+        "score": 0.713710606098175,
+        "clothes_path": "/content/app/data/2d/m1_light_22.png"
+      },
+      {
+        "id": 24,
+        "score": 0.6818857192993164,
+        "clothes_path": "/content/app/data/2d/m1_light_18.png"
+      },
+      {
+        "id": 57,
+        "score": 0.6738882064819336,
+        "clothes_path": "/content/app/data/2d/m5_dark_2.png"
+      },
+      {
+        "id": 26,
+        "score": 0.6704906225204468,
+        "clothes_path": "/content/app/data/2d/m1_light_2.png"
+      }
+    ]
+  },
+  {
+    "gender": "male",
+    "bg_path": "data/bg/Screenshot 2026-01-04 at 11.52.55.png",
+    "edited_image_path": "data/cropped_clothes/37_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 84,
+        "score": 0.7615529298782349,
+        "clothes_path": "/content/app/data/2d/m6_brown_9.png"
+      },
+      {
+        "id": 57,
+        "score": 0.7555800676345825,
+        "clothes_path": "/content/app/data/2d/m5_dark_2.png"
+      },
+      {
+        "id": 94,
+        "score": 0.7486751079559326,
+        "clothes_path": "/content/app/data/2d/m6_dark_9.png"
+      },
+      {
+        "id": 86,
+        "score": 0.7448437213897705,
+        "clothes_path": "/content/app/data/2d/m6_dark_10.png"
+      },
+      {
+        "id": 77,
+        "score": 0.7272418737411499,
+        "clothes_path": "/content/app/data/2d/m6_brown_2.png"
+      }
+    ]
+  },
+  {
+    "gender": "female",
+    "bg_path": "data/bg/Screenshot 2026-01-04 at 11.52.55.png",
+    "edited_image_path": "data/cropped_clothes/38_cropped.jpg",
+    "count": 5,
+    "results": [
+      {
+        "id": 26,
+        "score": 0.8056219816207886,
+        "clothes_path": "/content/app/data/2d/m1_light_2.png"
+      },
+      {
+        "id": 94,
+        "score": 0.7826873660087585,
+        "clothes_path": "/content/app/data/2d/m6_dark_9.png"
+      },
+      {
+        "id": 2,
+        "score": 0.7780631184577942,
+        "clothes_path": "/content/app/data/2d/m1_brown_5.png"
+      },
+      {
+        "id": 52,
+        "score": 0.7779645919799805,
+        "clothes_path": "/content/app/data/2d/m5_brown_7.png"
+      },
+      {
+        "id": 86,
+        "score": 0.7747769355773926,
+        "clothes_path": "/content/app/data/2d/m6_dark_10.png"
+      }
+    ]
+  }
+]

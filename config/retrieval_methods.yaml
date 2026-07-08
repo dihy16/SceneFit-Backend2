@@ -1,0 +1,31 @@
+# Configuration for retrieval method endpoints
+# Each method is hosted on a separate server
+
+retrieval_methods:
+  clip:
+    url: "https://triadelphous-supersaintly-millicent.ngrok-free.dev/"
+    endpoint: "api/v1/retrieval/clip"
+    description: "CLIP-based vector database retrieval"
+  
+  image_edit:
+    url: "https://triadelphous-supersaintly-millicent.ngrok-free.dev/"
+    endpoint: "api/v1/retrieval/image-edit-flux"
+    description: "Image edit model retrieval"
+  
+  vlm:
+    url: "https://adriane-unsensualized-squeakily.ngrok-free.dev/"
+    endpoint: "api/v1/retrieval/vlm-faiss-composed-retrieval"
+    description: "Vision-Language Model retrieval"
+  
+  aesthetic:
+    url: "https://ellyn-obcordate-francisca.ngrok-free.dev/"
+    endpoint: "api/v1/retrieval/aesthetic"
+    description: "Aesthetic predictor retrieval"
+
+# Request timeout in seconds
+timeout: 300
+
+# Retry configuration
+retry:
+  max_attempts: 3
+  delay_seconds: 1
