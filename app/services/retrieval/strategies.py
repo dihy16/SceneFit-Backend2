@@ -226,7 +226,9 @@ class BaseRetrievalStrategy(ABC):
             )
 
         cfg = _RETRIEVAL_CONFIG[self.config_key]
-        url = f"{cfg['url']}{cfg['endpoint']}"
+        base_url = cfg['url'].rstrip('/')
+        endpoint_path = cfg['endpoint'].lstrip('/')
+        url = f"{base_url}/{endpoint_path}"
         print(f"[{tag}] -> {url}  (top_k={top_k})")
 
         for attempt in range(_RETRY["max_attempts"]):
