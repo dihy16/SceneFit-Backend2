@@ -24,13 +24,13 @@ if [ -f .env ]; then
 fi
 
 # 5. Execute the setup script on Colab
-colab exec -s "$SESSION_NAME" --timeout 3600 -f setup_colab.py
+colab exec -s "$SESSION_NAME" -f setup_colab.py
 
 # 6. Execute the Ngrok tunnel setup script on Colab
-colab exec -s "$SESSION_NAME" --timeout 600 -f start_ngrok.py
+colab exec -s "$SESSION_NAME" -f start_ngrok.py
 
 # 7. Start the backend server using run.sh and stream logs
-cat << 'EOF' | colab exec -s "$SESSION_NAME" --timeout 86400
+cat << 'EOF' | colab exec -s "$SESSION_NAME"
 import subprocess
 import sys
 

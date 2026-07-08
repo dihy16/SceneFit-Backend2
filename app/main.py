@@ -13,7 +13,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.mount("/images", StaticFiles(directory="data/2d_white_bg"), name="2D images")
+    # app.mount("/images", StaticFiles(directory="data/2d_white_bg"), name="2D images")
+    app.mount("/images", StaticFiles(directory="data/2d"), name="2D images")
 
     app.include_router(api_router, prefix="/api/v1")
     return app
