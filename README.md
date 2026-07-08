@@ -3,147 +3,56 @@ A scene-aware system that retrieves suitable clothing based on environmental con
 
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-**API Endpoints (Retrieval - Common Format)**
-- Base path: `/api/v1/retrieval`
-- Request: `multipart/form-data` with required `image` (file). Common optional fields: `top_k` (int, default 5);
-- Response envelope (always): `method` (str), `count` (int), `results` (list).
-- In `results`, it must always have `outfit_name`, `score`.
+## Main Method: SaMaG-R Architecture
 
-This is the required parameters
-```jsonc
-{
-  "image": "<file>",          // required
-  "top_k": 5,                  // optional (default 5), int
-}
-```
+The architecture of SaMaG-R operates in four main stages, orchestrated by the `SaMaGPipeline` builder in `app/services/retrieval/samag_pipeline.py`:
 
-**Method: image-edit**
-- Endpoint: `POST /api/v1/retrieval/image-edit`
-- Request extras: `gender` ("male"|"female"), `crop_clothes` (bool): for croping image or not before retrieval, `return_metadata` (bool; when false, omit `outfit_path`).
-- Response extras: `gender` (str), `edited_image_path` (string). 
-- Request extras:
-  - `gender` ("male"|"female")
-  - `crop_clothes` (bool)
-  - `return_metadata` (bool; when false, omit `outfit_path`)
-  - `preference_text` (string, optional) — preferred style or intent
-  - `preference_audio` (file, optional) — speech alternative to text; backend transcribes if text is absent
-- Response extras: `gender` (str), `edited_image_path` (string), optional `ref_image_path` (string), `session_id` (string for follow-up). Bulk variant (`POST /api/v1/retrieval/image-edit/retrieve-all`) also returns `bg_path`.
+| Pipeline Stage | Corresponding Function |
+| --- | --- |
+| **Input Stage** | `SaMaGPipeline` initialization |
+| **Visual Encoding** (Path A) | `extract_visual_features()` |
+| **Generative Encoding** (Path B) | `extract_semantic_features()` |
+| **Orthogonal Rejection** (Query Formulation) | `formulate_query()` |
+| **Faiss Vector Search** | `execute_faiss_search()` |
+| **MMR Diversification** | `rerank_with_soft_penalty()` in `app/services/retrieval/post_processing.py` |
+| **Reranking Stage** (Qwen VLM) | `rerank_candidates()` |
 
-Audio feedback loop:
-- Endpoint: `POST /api/v1/retrieval/image-edit/apply-feedback`
-- Request fields:
-  - `session_id` (string, required; from the initial image-edit response)
-  - `top_k` (int, optional)
-  - `crop_clothes` (bool, optional)
-  - `feedback_text` (string, optional)
-  - `feedback_audio` (file, optional; used if text is absent)
-- Response: same envelope (`method`, `count`, `results`) plus `session_id`, `edited_image_path`.
+## API Endpoints (Retrieval)
 
-Example response (image-edit):
+This backend acts as a facade/router that delegates retrieval tasks to specialized remote model workers configured in `config/retrieval_methods.yaml`.
 
+### Common Request Format
+- **Request Type:** `multipart/form-data`
+- **Fields:**
+  - `image` (file, required): The scene/background image.
+  - `top_k` (int, optional, default: 5): The number of clothing items to retrieve.
+
+### 1. All Methods
+- **Endpoint:** `POST /api/v1/retrieval/all-methods`
+- **Description:** Runs every registered strategy (e.g., `clip`, `image_edit`, `vlm`, `aesthetic`) in parallel.
+- **Example Response:**
 ```json
 {
-  "method": "image-edit",
-  "count": 3,
-  "gender": "male",                  // optional
-  "edited_image_path": "data/edited_image/12.jpg", // optional
-  "ref_image_path": "data/man.png",                // optional
-  "session_id": "5f0c8c2e8c5d4f1c8e7b3a2f1d6e4c9a",    // for apply-feedback
-  "results": [
-    { "outfit_name": "item17", "score": 0.83 },
-    { "outfit_name": "item04", "score": 0.79 },
-    { "outfit_name": "item09", "score": 0.76 }
-  ]
-}
-```
-
-Example request (image-edit) — pseudo JSON for multipart form:
-
-```jsonc
-{
-  "image": "<file>",          // required
-  "top_k": 5,
-  "gender": "male",
-  "crop_clothes": true,
-  "return_metadata": true,
-  "preference_text": "sporty winter outfit",
-  "preference_audio": "<audio file>"  // optional; used if preference_text is empty
-}
-```
-
-Example request (apply-feedback) — pseudo JSON for multipart form:
-
-```jsonc
-{
-  "session_id": "5f0c8c2e8c5d4f1c8e7b3a2f1d6e4c9a", // from initial response
-  "top_k": 5,
-  "crop_clothes": true,
-  "feedback_text": "make the jacket darker",
-  "feedback_audio": "<audio file>" // optional; used if feedback_text is empty
-}
-```
-
-**VLM Faiss Composed Fashion Retrieval**
-- Endpoint: `POST /api/v1/retrieval/vlm-faiss-composed-retrieval`
-
-Example response (vlm-faiss-composed-retrieval):
-
-```json
-{
-  "method": "vlm-faiss-composed-retrieval",
-  "count": 10,
-  "count": 10,
-  "scene_caption": "This vibrant, sunlit outdoor scene features a lush purple floral meadow under a bright blue sky, with cascading purple trees and rocky terrain, suggesting a casual, festive spring or summer outing where bold, complementary colors like soft pastels or earthy tones would harmonize with the vivid purple palette.",
-  "results": [
-    {
-      "name_clothes": "m1_light_22.png",
-      "similarity": 0.30995649099349976,
-      "rerank_score": 0.3404726982116699
-    },
-    {
-      "name_clothes": "m6_brown_5.png",
-      "similarity": 0.3073599338531494,
-      "rerank_score": 0.32914280891418457
-    },
-    {
-      "name_clothes": "m1_light_13.png",
-      "similarity": 0.287604421377182,
-      "rerank_score": 0.3193117380142212
-    }    
+  "clip": [
+    { "name": "m1_light_22", "score": 0.83, "image_url": "http://localhost:8000/images/m1_light_22.png" }
   ],
-  "best": {
-    "name_clothes": "m1_light_22.png",
-    "similarity": 0.30995649099349976,
-    "rerank_score": 0.3404726982116699
-  }
+  "image_edit": [
+    { "name": "item04", "score": 0.79, "image_url": "http://localhost:8000/images/item04.png" }
+  ],
+  "vlm": [],
+  "aesthetic": []
 }
 ```
 
-**All methods API**
-- Endpoint: `POST /api/v1/retrieval/all-methods`
-
-- Request: `multipart/form-data`
-
-```jsonc
-{
-  "image": "<file>",          // required
-  "top_k": 5,                  // optional (default 5), int
-}
-```
-
-Example response:
-
-```jsonc
-{
-   "imageEdit": [{
-      "name": "name1",
-      "score": 0.24,
-      "image_url": "http://localhost:8000/images/{name1}.jpg",
-   }],
-   "vlm": [],
-   "clip": [],
-   "aesthetic": []
-}
+### 2. Single Method
+- **Endpoint:** `POST /api/v1/retrieval/{method_name}`
+- **Description:** Runs a specific retrieval strategy by name. Current available methods: `clip`, `image_edit`, `vlm`, `aesthetic`.
+- **Example Response:**
+```json
+[
+  { "name": "m1_light_22", "score": 0.83, "image_url": "http://localhost:8000/images/m1_light_22.png" },
+  { "name": "m6_brown_5", "score": 0.71, "image_url": "http://localhost:8000/images/m6_brown_5.png" }
+]
 ```
 
 

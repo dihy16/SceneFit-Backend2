@@ -1,188 +1,101 @@
-## Documentation
+# SceneFit-Backend API Endpoints
+
+The SceneFit-Backend application acts as a central facade that routes retrieval requests to remote worker services and aggregates their results. It also hosts endpoints for the User Study application.
 
 ### Base URL
-All endpoints below are served under:
+All endpoints are served under:
 ```
 /api/v1
 ```
 
-### /asr
-#### `/audio_fb`
-Transcribe an uploaded audio clip (voice feedback) to text.
-##### POST
-`multipart/form-data`
-```js
+## Retrieval API
+
+The retrieval system is modular, with methods registered in `app/services/retrieval/strategies.py` and configured in `config/retrieval_methods.yaml`.
+
+### `POST /retrieval/all-methods`
+Runs all registered retrieval strategies (`clip`, `image_edit`, `vlm`, `aesthetic`) in parallel.
+
+**Request:** `multipart/form-data`
+- `image` (file, required): The background/scene image.
+- `top_k` (int, optional, default: `5`): Number of results to retrieve per method.
+
+**Response:** `application/json`
+A dictionary mapping each strategy name to its array of retrieved outfits.
+```json
 {
-	audio: "[audio file: wav/mp3/mp4]"
-}
-```
-returns
-```js
-{
-	transcript: "I like the outfit but change the color",
-	signal_type: "voice_feedback"
+  "clip": [
+    { "name": "item1", "score": 0.95, "image_url": "http://localhost:8000/images/item1.png" }
+  ],
+  "image_edit": [
+    { "name": "item2", "score": 0.88, "image_url": "http://localhost:8000/images/item2.png" }
+  ],
+  "vlm": [],
+  "aesthetic": []
 }
 ```
 
-### /vlm
-#### `/vlm-generated-clothes-captions`
-Generate clothing descriptions from a background image.
-##### POST
-`multipart/form-data`
-```js
-{
-	image: "[image file: png/jpg]"
-}
+### `POST /retrieval/{method_name}`
+Runs a specific retrieval strategy. 
+*Valid method names:* `clip`, `image_edit`, `vlm`, `aesthetic`.
+
+**Request:** `multipart/form-data`
+- `image` (file, required): The background/scene image.
+- `top_k` (int, optional, default: `5`): Number of results to retrieve.
+
+**Response:** `application/json`
+An array of retrieved outfits.
+```json
+[
+  { "name": "item1", "score": 0.95, "image_url": "http://localhost:8000/images/item1.png" },
+  { "name": "item2", "score": 0.88, "image_url": "http://localhost:8000/images/item2.png" }
+]
 ```
-returns
-```js
+
+## User Study API
+
+### `POST /study/response`
+Submits a participant's evaluation response from the study UI.
+
+**Request:** `application/json`
+```json
 {
-	res: [
-		"a light blue denim jacket",
-		"white sneakers",
-		"cream hoodie"
-	]
+  "responses": [
+    {
+      "methodName": "Vision Language Model",
+      "imgURLs": ["http://host/images/item1.png", "http://host/images/item2.png"],
+      "selectedURL": "http://host/images/item1.png",
+      "viewCounts": [2, 1]
+    }
+  ],
+  "winnerMethodName": "Vision Language Model"
 }
 ```
 
-#### `/vlm-clip-images-matching`
-Generate descriptions from a background image, then rank clothes by PE-CLIP image similarity.
-##### POST
-`multipart/form-data`
-```js
+**Response:** `application/json`
+```json
 {
-	image: "[image file: png/jpg]"
-}
-```
-returns
-```js
-{
-	query: ["a long beige trench coat", "black boots"],
-	results: [
-		{
-			name_clothes: "coat_013",
-			similarity: 0.7821,
-			best_description: "a long beige trench coat"
-		}
-	]
+  "ok": true,
+  "participantId": "uuid-string",
+  "stored": {
+    "file_path": "user_study/responses.json",
+    "entry_index": 0,
+    "receivedAt": "2026-03-06T12:00:00Z"
+  }
 }
 ```
 
-#### `/vlm-clip-caption-matching`
-Generate descriptions from a background image, then rank clothes using the captions cache.
-##### POST
-`multipart/form-data`
-```js
+### `POST /study/score`
+Computes aggregated scores across all stored participant responses.
+
+**Request:** `application/json`
+- `alpha` (float, default: `0.6`): Weighting factor between rank score and win rate.
+- `num_outfits` (int, default: `5`): Number of outfits per method.
+```json
 {
-	image: "[image file: png/jpg]"
-}
-```
-returns
-```js
-{
-	query: ["green bomber jacket", "black jeans"],
-	results: [
-		{
-			name_clothes: "jacket_022",
-			similarity: 0.6942,
-			best_description: "green bomber jacket"
-		}
-	]
+  "alpha": 0.6,
+  "num_outfits": 5
 }
 ```
 
-#### `/vlm-caption-feedback`
-Rank clothes using a text feedback string and precomputed captions (no image upload required).
-##### POST
-`application/json`
-```js
-{
-	descriptions: ["green bomber jacket", "black jeans"],
-	fb_text: "prefer darker colors"
-}
-```
-returns
-```js
-{
-	query: ["green bomber jacket", "black jeans"],
-	feedback: "prefer darker colors",
-	results: [
-		{
-			name_clothes: "jacket_022",
-			similarity: 0.6942,
-			best_description: "green bomber jacket"
-		}
-	]
-}
-```
-
-#### `/clothes-captions`
-Return the cached captions JSON for clothes. If it doesn't exist, it is generated first.
-##### GET
-returns
-```js
-{
-	"shirt_001.png": "a white oversized t-shirt",
-	"pants_004.png": "slim-fit dark denim jeans"
-}
-```
-
-#### `/vlm-tournament-selection`
-Pick the best clothes using tournament selection over captions (batch size 10 per round).
-##### POST
-`multipart/form-data`
-```js
-{
-	image: "[image file: png/jpg]"
-}
-```
-returns
-```js
-{
-	background_caption: "a city street at dusk",
-	best_clothes: "jacket_022"
-}
-```
-If no captions exist, `best_clothes` is null.
-
-#### `/all-methods`
-Run all three approaches in one request.
-##### POST
-`multipart/form-data`
-```js
-{
-	image: "[image file: png/jpg]"
-}
-```
-returns
-```js
-{
-	approach_1: {
-		bg_caption: "",
-		query: ["beige trench coat"],
-		result: {
-			name_clothes: "coat_013",
-			similarity: 0.7821,
-			best_description: "beige trench coat"
-		}
-	},
-	approach_2: {
-		bg_caption: "",
-		query: ["beige trench coat"],
-		result: {
-			name_clothes: "coat_013",
-			similarity: 0.7014,
-			best_description: "beige trench coat"
-		}
-	},
-	approach_3: {
-		bg_caption: "a city street at dusk",
-		query: [],
-		result: {
-			name_clothes: "coat_013",
-			similarity: 0,
-			best_description: ""
-		}
-	}
-}
-```
+**Response:** `application/json`
+Returns aggregated scoring and statistics.
