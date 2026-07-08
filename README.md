@@ -19,7 +19,28 @@ The architecture of SaMaG-R operates in four main stages, orchestrated by the `S
 
 ## API Endpoints (Retrieval)
 
-This backend acts as a facade/router that delegates retrieval tasks to specialized remote model workers configured in `config/retrieval_methods.yaml`.
+This backend acts as a facade/router that delegates retrieval tasks to specialized remote model workers configured in `config/retrieval_methods.yaml`. 
+**Ablation Study / Togglable Components:** Because of the Builder pattern design, you can easily toggle any stage of the pipeline on or off for ablation studies. Just pass the corresponding boolean flags when initializing the pipeline.
+
+**Example: Toggling off Semantic Encoding & VLM Reranking**
+```python
+from app.services.retrieval.samag_pipeline import SaMaGPipeline
+
+results = (
+    SaMaGPipeline(
+        use_visual=True,
+        use_semantic=False,               # Toggled OFF
+        use_orthogonal_rejection=False,   # Must be OFF if semantic is OFF
+        use_reranker=False                # Toggled OFF
+    )
+    .extract_visual_features(bg_path)
+    .extract_semantic_features(bg_path)
+    .formulate_query(w_semantic=0.0, w_scene=0.0, w_img=1.0)
+    .execute_faiss_search(top_k=10)
+    .rerank_candidates()
+    .get_results()
+)
+```
 
 ### Common Request Format
 - **Request Type:** `multipart/form-data`
@@ -219,4 +240,5 @@ We have provided a script to do this automatically:
 
 - **Google Colab Secrets:** If you have previously saved an `HF_TOKEN` in the Google Colab UI's "Secrets" tab (the key icon on the left sidebar) and enabled "Notebook Access", **Colab will forcefully override your `.env` file**. If the secret is expired or invalid, your backend will crash with a `401 Unauthorized` error. You must delete the `HF_TOKEN` from the Colab Secrets tab so your `.env` file is respected!
 - **`.env` File Formatting:** Do **not** put quotes (`"`) around your tokens in the `.env` file. Pydantic may read the literal quotes as part of the string, which will instantly invalidate Hugging Face fine-grained tokens (which must start strictly with `hf_`).
-- **Dataset Location:** The script expects your `data.zip` file to be located exactly at `/content/drive/MyDrive/VRetrieval/data.zip` in your Google Drive.
+- **Dataset Location:** The script expects your `data.zip` file to be located exactly at `/content/drive/MyDrive/VRetrieval/data.zip` in your Google Drive.
+- **Update Ngrok URLs for Model Workers:** The main backend routes requests to individual model workers. Make sure to update `config/retrieval_methods.yaml` with the current, live Ngrok URLs of your active model workers! If you forget to update them and the old tunnels are dead, the backend will return 404s under the hood and fall back to returning mock data.
