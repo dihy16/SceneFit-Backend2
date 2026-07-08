@@ -16,10 +16,9 @@ run_bash("chmod +x /content/run.sh")
 
 # 2. Install dependencies
 print("Installing dependencies...")
-run_bash("pip install -q uv")
-run_bash("uv pip install --system pyngrok ftfy 'rembg[gpu]' faiss-cpu 'qwen-vl-utils>=0.0.14' python-dotenv")
+run_bash("pip install pyngrok ftfy 'rembg[gpu]' faiss-cpu 'qwen-vl-utils>=0.0.14' python-dotenv")
 if os.path.exists("/content/requirements.txt"):
-    run_bash("uv pip install --system -r /content/requirements.txt")
+    run_bash("pip install -r /content/requirements.txt")
 
 # 3. Extract dataset from Google Drive
 drive_data_path = "/content/drive/MyDrive/VRetrieval/data.zip"
