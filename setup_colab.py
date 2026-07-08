@@ -35,6 +35,6 @@ else:
 
 # 3. Build the visual search index
 print("Building visual search index...")
-run_bash("python -m app.indexing.build_pe_index")
+run_bash("python -m scripts.indexing.build_pe_index")
 
 print("Setup completed successfully.")
