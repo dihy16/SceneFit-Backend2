@@ -29,7 +29,7 @@ if os.path.exists("/content/requirements.txt"):
 drive_data_path = "/content/drive/MyDrive/VRetrieval/data.zip"
 if os.path.exists(drive_data_path):
     print("Unzipping dataset from Google Drive...")
-    run_bash(f"unzip -o -q {drive_data_path} -d /content/app")
+    run_bash(f"unzip -o -q {drive_data_path} -d /content")
 else:
     print(f"WARNING: {drive_data_path} not found. Skipping unzip.")
 
