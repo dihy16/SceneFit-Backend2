@@ -196,12 +196,27 @@ You can run the backend server on a Google Colab VM (with GPU hardware accelerat
 Run the provided script:
 ```bash
 chmod +x run_colab.sh
-./run_colab.sh [session_name]
+./run_colab.sh
 ```
+
 By default, the script:
 - Verifies/creates a session named `scenefit-backend` with a `T4` GPU.
 - Mounts Google Drive (requires a one-time permission prompt/confirmation).
 - Uploads your local `.env` file to the remote environment securely.
 - Executes setup via `setup_colab.py` (clones repo, extracts dataset, builds search index).
 - Initializes the Ngrok tunnel via `start_ngrok.py`.
-- Starts the FastAPI Uvicorn server in the foreground, streaming server logs directly to your local terminal using `run.sh`.
+- Starts the FastAPI Uvicorn server in the foreground, streaming server logs directly to your local terminal.
+
+### Stopping the Backend
+
+When you are finished testing or developing, you **must** stop the Colab session to release the GPU resources. If you don't, the VM will remain active in the background.
+We have provided a script to do this automatically:
+```bash
+./stop_colab.sh
+```
+
+### ⚠️ Important Troubleshooting
+
+- **Google Colab Secrets:** If you have previously saved an `HF_TOKEN` in the Google Colab UI's "Secrets" tab (the key icon on the left sidebar) and enabled "Notebook Access", **Colab will forcefully override your `.env` file**. If the secret is expired or invalid, your backend will crash with a `401 Unauthorized` error. You must delete the `HF_TOKEN` from the Colab Secrets tab so your `.env` file is respected!
+- **`.env` File Formatting:** Do **not** put quotes (`"`) around your tokens in the `.env` file. Pydantic may read the literal quotes as part of the string, which will instantly invalidate Hugging Face fine-grained tokens (which must start strictly with `hf_`).
+- **Dataset Location:** The script expects your `data.zip` file to be located exactly at `/content/drive/MyDrive/VRetrieval/data.zip` in your Google Drive.
