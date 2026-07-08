@@ -8,11 +8,11 @@ def run_bash(command):
 print("Starting Colab environment setup...")
 
 # 1. Clean up, clone repository, and set permissions
-run_bash("rm -rf /content/app /content/SceneFit-Backend2")
-run_bash("git clone --branch main --recurse-submodules https://github.com/dihy16/SceneFit-Backend2.git")
-run_bash("mv -f /content/SceneFit-Backend2/* /content/")
 run_bash("rm -rf /content/SceneFit-Backend2")
-run_bash("chmod +x run.sh")
+run_bash("git clone --branch main --recurse-submodules https://github.com/dihy16/SceneFit-Backend2.git")
+run_bash("rsync -a /content/SceneFit-Backend2/ /content/")
+run_bash("rm -rf /content/SceneFit-Backend2")
+run_bash("chmod +x /content/run.sh")
 
 # 2. Install dependencies
 print("Installing dependencies...")
