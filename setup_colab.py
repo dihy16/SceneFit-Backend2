@@ -3,7 +3,12 @@ import subprocess
 
 def run_bash(command):
     print(f"Running: {command}")
-    subprocess.run(command, shell=True, check=True)
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"COMMAND FAILED: {command}")
+        print(f"STDOUT:\n{result.stdout}")
+        print(f"STDERR:\n{result.stderr}")
+        raise subprocess.CalledProcessError(result.returncode, command, result.stdout, result.stderr)
 
 print("Starting Colab environment setup...")
 
