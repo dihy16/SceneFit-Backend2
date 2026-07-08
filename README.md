@@ -168,3 +168,40 @@ Storage path behavior:
 ## Data
 [Google Drive Quan](https://drive.google.com/drive/folders/1Vii6WOEMJgGIVk5DmnA9ciK4llKHuDlQ?fbclid=IwY2xjawPuqwFleHRuA2FlbQIxMABicmlkETE4Wk5weUw1a2JObU9VODU3c3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHulNNSWtU4sttSuIjrjC0R8HTWYoUpwc8azMm8M6m0sLGfT4hw9tLZewWPx9_aem_6tlkSC-HOwumuWwDc2Tk2A)
 [Google Drive Main](https://drive.google.com/drive/folders/1AAHqvWLGTxXsRxc85inFpjssEHwWWQsy?dmr=1&ec=wgc-drive-globalnav-goto)
+
+## Running on Google Colab (via Google Colab CLI)
+
+You can run the backend server on a Google Colab VM (with GPU hardware acceleration) using the official `google-colab-cli` tool.
+
+### Prerequisites
+
+1. Install the official `google-colab-cli` tool on your local machine (Linux, macOS, or WSL):
+   ```bash
+   uv tool install google-colab-cli
+   # or
+   pip install google-colab-cli
+   ```
+2. Log in and authenticate the CLI:
+   ```bash
+   colab auth login
+   ```
+3. (Optional) Create a `.env` file in the root of the project with your secrets, which will be uploaded to Colab automatically:
+   ```env
+   NGROK_TOKEN="your_ngrok_token_here"
+   HF_TOKEN="your_hugging_face_token_here"
+   ```
+
+### Execution
+
+Run the provided script:
+```bash
+chmod +x run_colab.sh
+./run_colab.sh [session_name]
+```
+By default, the script:
+- Verifies/creates a session named `scenefit-backend` with a `T4` GPU.
+- Mounts Google Drive (requires a one-time permission prompt/confirmation).
+- Uploads your local `.env` file to the remote environment securely.
+- Executes setup via `setup_colab.py` (clones repo, extracts dataset, builds search index).
+- Initializes the Ngrok tunnel via `start_ngrok.py`.
+- Starts the FastAPI Uvicorn server in the foreground, streaming server logs directly to your local terminal using `run.sh`.

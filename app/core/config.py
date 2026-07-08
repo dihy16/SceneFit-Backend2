@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     IMAGEROUTER_API_KEY: str = Field(..., description="ImageRouter API key")
     HF_TOKEN: Optional[str] = Field(None, description="Hugging Face authentication token")
+    NGROK_TOKEN: Optional[str] = Field(None, description="Ngrok Tunnel Auth Token")
     MAIN_PREFIX: str = "https://wifelier-melita-soapiest.ngrok-free.dev/"
 
     model_config = {
