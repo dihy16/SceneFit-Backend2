@@ -10,6 +10,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -18,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REMOTE_ROOT = Path("/content")
 REMOTE_RUN_DIR = REMOTE_ROOT / "results" / "benchmark" / "latest"
 REMOTE_ARCHIVE = REMOTE_ROOT / "benchmark-checkpoint.zip"
+REMOTE_STATUS = REMOTE_ROOT / ".scenefit-benchmark-command-status.json"
 
 
 def _run_colab(
@@ -31,11 +33,30 @@ def _run_colab(
 
 
 def _remote_exec(session: str, code: str, timeout: int) -> None:
+    wrapped_code = (
+        "from pathlib import Path\n"
+        "import json, traceback\n"
+        f"status_path = Path({str(REMOTE_STATUS)!r})\n"
+        "status_path.unlink(missing_ok=True)\n"
+        "try:\n"
+        f"    exec({code!r}, globals(), globals())\n"
+        "except BaseException:\n"
+        "    status_path.write_text(json.dumps({'ok': False, 'error': traceback.format_exc()}), encoding='utf-8')\n"
+        "    raise\n"
+        "else:\n"
+        "    status_path.write_text(json.dumps({'ok': True}), encoding='utf-8')\n"
+    )
     _run_colab(
         ["exec", "-s", session, "--timeout", str(timeout)],
-        code=code,
+        code=wrapped_code,
         timeout=timeout + 60,
     )
+    with tempfile.TemporaryDirectory() as directory:
+        status_file = Path(directory) / "remote-status.json"
+        _run_colab(["download", "-s", session, str(REMOTE_STATUS), str(status_file)])
+        status = json.loads(status_file.read_text(encoding="utf-8"))
+    if not status.get("ok"):
+        raise RuntimeError(f"Remote Colab command failed:\n{status.get('error', 'unknown error')}")
 
 
 def _remote_command(session: str, command: list[str], timeout: int) -> None:
@@ -129,7 +150,11 @@ def main() -> int:
         "import json, subprocess\n"
         f"manifest_path = Path({str(REMOTE_RUN_DIR / 'manifest.json')!r})\n"
         f"command = {json.dumps(manifest_command)}\n"
-        f"subprocess.run(command, cwd={str(REMOTE_ROOT)!r}, check=True) if not manifest_path.exists() else None\n"
+        "if not manifest_path.exists():\n"
+        f"    result = subprocess.run(command, cwd={str(REMOTE_ROOT)!r}, text=True, capture_output=True)\n"
+        "    if result.returncode:\n"
+        "        raise RuntimeError('Manifest creation failed:\\n' + result.stdout + result.stderr)\n"
+        "    print(result.stdout, end='')\n"
         "manifest = json.loads(manifest_path.read_text(encoding='utf-8'))\n"
         f"assert len(manifest['scenes']) == {args.num_scenes}, 'Existing manifest has a different scene count'\n"
         f"assert len(manifest['outfits']) == {args.num_outfits}, 'Existing manifest has a different outfit count'\n"
