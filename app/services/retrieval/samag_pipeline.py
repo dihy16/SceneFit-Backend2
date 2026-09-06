@@ -106,15 +106,31 @@ class SaMaGPipeline:
     ) -> SaMaGPipeline:
         """Fuse visual and semantic cues, applying Orthogonal Rejection if enabled."""
         
-        # Determine embedding dimension dynamically or default to 512
-        emb_dim = 512
-        if self.context["bg_emb"] is not None:
-            emb_dim = self.context["bg_emb"].shape[-1]
-        elif self.context["scene_emb"] is not None:
-            emb_dim = self.context["scene_emb"].shape[-1]
-            
-        # Base query formulation
-        query_emb = torch.zeros((self.config["n_good"], emb_dim))
+        # Allocate the accumulator beside the model-produced embeddings. A
+        # plain torch.zeros() defaults to CPU and fails when PE-CLIP runs on
+        # CUDA, which is the normal benchmark configuration.
+        reference_tensor = next(
+            (
+                tensor
+                for tensor in (
+                    self.context["bg_emb"],
+                    self.context["good_emb"],
+                    self.context["scene_emb"],
+                )
+                if torch.is_tensor(tensor)
+            ),
+            None,
+        )
+        emb_dim = reference_tensor.shape[-1] if reference_tensor is not None else 512
+        tensor_options = (
+            {"device": reference_tensor.device, "dtype": reference_tensor.dtype}
+            if reference_tensor is not None
+            else {}
+        )
+        query_emb = torch.zeros(
+            (self.config["n_good"], emb_dim),
+            **tensor_options,
+        )
         
         # Add Visual Cue
         if self.config["use_visual"] and self.context["bg_emb"] is not None:
