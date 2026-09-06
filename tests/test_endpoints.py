@@ -7,11 +7,14 @@ def test_single_method(base_url, method_name, image_path):
     print(f"\n[{method_name.upper()}] Testing endpoint: {url}")
     
     try:
+        headers = {"ngrok-skip-browser-warning": "true"}
         with open(image_path, "rb") as f:
             response = requests.post(
                 url, 
                 files={"image": ("test_image.png", f, "image/png")},
-                data={"top_k": 5}
+                data={"top_k": 5},
+                headers=headers,
+                timeout=30
             )
             print(f"Status Code: {response.status_code}")
             if response.status_code == 200:
