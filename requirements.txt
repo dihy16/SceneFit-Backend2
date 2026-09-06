@@ -30,3 +30,7 @@ websockets
 open-clip-torch
 git+https://github.com/huggingface/diffusers.git
 huggingface_hub
+google-genai
+httpx
+PyYAML
+python-dotenv
