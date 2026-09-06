@@ -36,6 +36,9 @@ if drive_data_path:
     # Do not retain outfits/scenes from an earlier full archive: that would
     # defeat the compact benchmark archive and make index construction slow.
     run_bash("rm -rf /content/data/bg /content/data/2d")
+    # The archive supplies a fresh manifest.  Remove stale judgments and
+    # rankings so they cannot be mixed with this new candidate pool.
+    run_bash("rm -rf /content/results/benchmark/latest")
     run_bash(f"unzip -o -q {drive_data_path} -d /content")
 else:
     print("WARNING: No benchmark_data.zip or data.zip found. Skipping unzip.")

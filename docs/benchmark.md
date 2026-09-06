@@ -72,6 +72,10 @@ indexing the rest of the outfit dataset. It also includes `data/ref_images/`
 when that directory exists locally. Add `man.png` and `woman.png` there before
 packaging if you intend to evaluate the `image_edit` method.
 
+When setup uses this archive, it clears the VM's previous scenes, outfits, and
+active benchmark run before extracting it. Local checkpoint ZIPs are not
+deleted; use a new `--output-dir` for a deliberately fresh run.
+
 From the repository directory in WSL, create a T4 session and prepare it:
 
 ```bash
