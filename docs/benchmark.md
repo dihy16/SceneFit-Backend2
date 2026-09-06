@@ -51,7 +51,7 @@ The output contains the data manifest and hashes, append-only `judgments.jsonl`,
 
 Gemini 3.7 Flash runs in Google's API and does not use the Colab GPU. The GPU is useful for the CLIP, image-edit, VLM/SaMaG-R, and aesthetic retrieval workers. The benchmark CLI may run in the same Colab session or locally while calling remote GPU workers.
 
-If all retrieval workers already run on other machines, the benchmark session itself does not benefit from a GPU; create a CPU session instead. The T4 command below is appropriate only when this Colab environment also hosts retrieval-model work.
+If all retrieval workers already run on other machines, the benchmark session itself does not benefit from a GPU; create a CPU session instead. The A100 command below is appropriate when this Colab environment also hosts retrieval-model work.
 
 The official Colab CLI supports Linux and macOS. On Windows, run these commands from WSL, not PowerShell. Install and authenticate once:
 
@@ -60,35 +60,38 @@ uv tool install google-colab-cli
 colab auth login
 ```
 
-The provided setup script clones the `main` branch from GitHub. Commit and push the benchmark implementation before using it, or the Colab VM will receive the older repository version. For the compact benchmark workflow, create `benchmark_data.zip` locally and upload it to `/MyDrive/VRetrieval/` in Google Drive. Setup prefers that archive over the legacy full `data.zip`.
+The provided setup script clones the `main` branch from GitHub. Commit and push
+the benchmark implementation before using it, or the Colab VM will receive the
+older repository version. Upload the full dataset archive to
+`/MyDrive/VRetrieval/data.zip` in Google Drive. Setup clears the VM's previous
+scenes, outfits, and active benchmark run, extracts `data.zip`, and defers index
+construction so benchmark-mode startup can encode only the selected 100
+outfits.
 
-```bash
-python scripts/package_benchmark_data.py --num-scenes 10 --num-outfits 100
-```
-
-`benchmark_data.zip` contains the selected 10 scenes, selected 100 outfits,
-their manifest, and available clothing metadata. It avoids transferring or
-indexing the rest of the outfit dataset. It also includes `data/ref_images/`
-when that directory exists locally. Add `man.png` and `woman.png` there before
-packaging if you intend to evaluate the `image_edit` method.
-
-When setup uses this archive, it clears the VM's previous scenes, outfits, and
-active benchmark run before extracting it. Local checkpoint ZIPs are not
-deleted; use a new `--output-dir` for a deliberately fresh run.
-
-From the repository directory in WSL, create a T4 session and prepare it:
+From the repository directory in WSL, create an A100 session and prepare it:
 
 ```bash
 SESSION_NAME=scenefit-benchmark
 colab new -s "$SESSION_NAME" --gpu A100
 colab drivemount -s "$SESSION_NAME"
-colab upload -s "$SESSION_NAME" .env /content/.env
 colab exec -s "$SESSION_NAME" --timeout 3600 -f setup_colab.py
+colab upload -s "$SESSION_NAME" .env /content/.env
 colab status -s "$SESSION_NAME"
 ```
 
 Your `.env` must contain `GEMINI_API_KEY`. The worker URL configuration is
 covered in the next section.
+
+The Drive archive currently supplies six backgrounds. Upload the four local
+`CamView` images individually after setup; keeping each transfer small is more
+reliable than uploading one large scene archive:
+
+```bash
+colab upload -s "$SESSION_NAME" data/bg/CamView_01_Default.png /content/data/bg/CamView_01_Default.png
+colab upload -s "$SESSION_NAME" data/bg/CamView_Capture_02.png /content/data/bg/CamView_Capture_02.png
+colab upload -s "$SESSION_NAME" data/bg/CamView_Capture_03.png /content/data/bg/CamView_Capture_03.png
+colab upload -s "$SESSION_NAME" data/bg/CamView_Current.png /content/data/bg/CamView_Current.png
+```
 
 Open a shell on the GPU VM:
 
@@ -101,9 +104,15 @@ Inside the Colab shell, verify the GPU and run the offline smoke test first:
 ```bash
 cd /content
 nvidia-smi
+test "$(find data/bg -maxdepth 1 -type f | wc -l)" -eq 10
+test -f data/ref_images/man.png
+test -f data/ref_images/woman.png
 python scripts/benchmark.py smoke
 exit
 ```
+
+The two reference-image checks are required for the `image_edit` method. If a
+check fails, add the missing file to `data.zip` or upload it before continuing.
 
 ## Start Retrieval Workers and Configure Their URLs
 
@@ -189,15 +198,17 @@ downloads that archive before starting the next scene:
 python scripts/run_benchmark_colab.py \
   --session "$SESSION_NAME" \
   --num-scenes 10 \
-  --num-outfits 100
+  --num-outfits 100 \
+  --methods clip aesthetic vlm image_edit \
+  --output-dir results/benchmark/colab-checkpoints-datazip-all
 ```
 
-To run only named entries from `config/retrieval_methods.yaml`, add, for
-example, `--methods clip vlm`. Each selected worker must support the multipart
-`candidate_names` form field and return all 100 requested outfits exactly once.
+This evaluates all four configured methods. Each worker must support the
+multipart `candidate_names` form field and return all 100 requested outfits
+exactly once.
 
 Checkpoints are saved locally under
-`results/benchmark/colab-checkpoints/`:
+`results/benchmark/colab-checkpoints-datazip-all/`:
 
 - `scene-001.zip`, `scene-002.zip`, etc. are cumulative snapshots downloaded
   immediately after each scene finishes.

@@ -25,26 +25,24 @@ run_bash("pip install pyngrok ftfy 'rembg[gpu]' faiss-cpu 'qwen-vl-utils>=0.0.14
 if os.path.exists("/content/requirements.txt"):
     run_bash("pip install -r /content/requirements.txt")
 
-# 3. Extract dataset from Google Drive. Prefer the compact benchmark archive.
-archive_candidates = [
-    "/content/drive/MyDrive/VRetrieval/benchmark_data.zip",
-    "/content/drive/MyDrive/VRetrieval/data.zip",
-]
-drive_data_path = next((path for path in archive_candidates if os.path.exists(path)), None)
-if drive_data_path:
+# 3. Extract the full dataset from Google Drive.
+drive_data_path = "/content/drive/MyDrive/VRetrieval/data.zip"
+if os.path.exists(drive_data_path):
     print("Unzipping dataset from Google Drive...")
-    # Do not retain outfits/scenes from an earlier full archive: that would
-    # defeat the compact benchmark archive and make index construction slow.
+    # Avoid mixing files or benchmark artifacts from an earlier run with the
+    # archive that is about to be extracted.
     run_bash("rm -rf /content/data/bg /content/data/2d")
-    # The archive supplies a fresh manifest.  Remove stale judgments and
-    # rankings so they cannot be mixed with this new candidate pool.
     run_bash("rm -rf /content/results/benchmark/latest")
     run_bash(f"unzip -o -q {drive_data_path} -d /content")
 else:
-    print("WARNING: No benchmark_data.zip or data.zip found. Skipping unzip.")
+    raise FileNotFoundError(
+        f"Required dataset archive not found: {drive_data_path}. "
+        "Mount Google Drive and upload VRetrieval/data.zip before setup."
+    )
 
-# 3. Build the visual search index
-print("Building visual search index...")
-run_bash("python -m scripts.build_pe_index")
+# Benchmark-mode Uvicorn builds an index containing only the outfits selected
+# by BENCHMARK_MANIFEST. Building the general full-dataset index here would do
+# duplicate work for the benchmark.
+print("Deferring visual index construction to application startup.")
 
 print("Setup completed successfully.")
