@@ -30,6 +30,7 @@ class VectorDatabase:
         recursive: bool = True,
         max_images: int | None = None,
         embedding_batch_size: int = 16,
+        allowed_names: Sequence[str] | None = None,
     ) -> None:
         self.embedding_model_name = embedding_model
         self.model = ModelRegistry.get(embedding_model)
@@ -47,6 +48,13 @@ class VectorDatabase:
         )
         self.recursive = recursive
         self.max_images = max_images
+        self.allowed_names = (
+            {Path(str(name)).stem for name in allowed_names}
+            if allowed_names is not None
+            else None
+        )
+        if allowed_names is not None and len(self.allowed_names) != len(allowed_names):
+            raise ValueError("allowed_names must contain unique outfit IDs")
         if embedding_batch_size < 1:
             raise ValueError("embedding_batch_size must be positive")
         self.embedding_batch_size = embedding_batch_size
@@ -78,11 +86,15 @@ class VectorDatabase:
         print("[VectorDB] ensure_ready: starting")
         data_dir = self.default_data_dir
         # 1) Explicit paths win
-        if self.index_path is not None and self.index_path.exists():
-            print(f"[VectorDB] Loading index from explicit path: {self.index_path}")
-            self._load_index(self.index_path, self.metadata_path)
-            if self._rebuild_if_mismatch(data_dir):
+        if self.index_path is not None:
+            if self.index_path.exists():
+                print(f"[VectorDB] Loading index from explicit path: {self.index_path}")
+                self._load_index(self.index_path, self.metadata_path)
+                if self._rebuild_if_mismatch(data_dir):
+                    return
                 return
+            print(f"[VectorDB] Explicit index not found: {self.index_path}")
+            self.ingest_folder(data_dir, recursive=self.recursive, max_images=self.max_images)
             return
 
         # 2) Try to discover an existing index near data_dir
@@ -111,7 +123,7 @@ class VectorDatabase:
         folder_path = self._resolve_path(folder)
 
         print(f"[VectorDB] Ingesting folder: {folder_path}")
-        file_list = self._list_image_files(folder_path, recursive=recursive)
+        file_list = self._selected_image_files(folder_path, recursive=recursive)
         if max_images is not None:
             file_list = file_list[: max_images]
 
@@ -186,7 +198,7 @@ class VectorDatabase:
         if self.index is None:
             return False
 
-        files = self._list_image_files(folder_path, recursive=self.recursive)
+        files = self._selected_image_files(folder_path, recursive=self.recursive)
         if self.max_images is not None:
             files = files[: self.max_images]
 
@@ -246,6 +258,29 @@ class VectorDatabase:
     def _list_image_files(self, folder_path: Path, recursive: bool = True) -> list[Path]:
         pattern = "**/*" if recursive else "*"
         return [p for p in sorted(folder_path.glob(pattern)) if p.suffix.lower() in self.IMAGE_EXTENSIONS]
+
+    def _selected_image_files(
+        self,
+        folder_path: Path,
+        recursive: bool = True,
+    ) -> list[Path]:
+        files = self._list_image_files(folder_path, recursive=recursive)
+        if self.allowed_names is None:
+            return files
+
+        by_stem: dict[str, list[Path]] = {}
+        for path in files:
+            by_stem.setdefault(path.stem, []).append(path)
+        missing = sorted(self.allowed_names - set(by_stem))
+        ambiguous = sorted(
+            name for name in self.allowed_names if len(by_stem.get(name, [])) > 1
+        )
+        if missing or ambiguous:
+            raise ValueError(
+                f"Invalid vector index candidate pool: missing={missing}, "
+                f"ambiguous={ambiguous}"
+            )
+        return [path for path in files if path.stem in self.allowed_names]
 
     def _default_index_path(self) -> Path:
         return self.default_data_dir / "vector.index"

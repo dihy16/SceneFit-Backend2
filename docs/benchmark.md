@@ -66,7 +66,7 @@ From the repository directory in WSL, create a T4 session and prepare it:
 
 ```bash
 SESSION_NAME=scenefit-benchmark
-colab new -s "$SESSION_NAME" --gpu T4
+colab new -s "$SESSION_NAME" --gpu A100
 colab drivemount -s "$SESSION_NAME"
 colab upload -s "$SESSION_NAME" .env /content/.env
 colab exec -s "$SESSION_NAME" --timeout 3600 -f setup_colab.py
@@ -93,9 +93,20 @@ exit
 
 ## Start Retrieval Workers and Configure Their URLs
 
-The benchmark evaluates retrieval *workers*, not just Gemini. Start the FastAPI
-server before running the real benchmark, and keep it running for the full
-benchmark. Open a second WSL terminal for this server process:
+The benchmark evaluates retrieval *workers*, not just Gemini. Prepare the
+manifest before starting the server so its vector database indexes only the
+100 benchmark outfits instead of every image in `data/2d`:
+
+```bash
+python scripts/run_benchmark_colab.py \
+  --session "$SESSION_NAME" \
+  --num-scenes 10 \
+  --num-outfits 100 \
+  --prepare-only
+```
+
+Start the FastAPI server afterward and keep it running for the full benchmark.
+Open a second WSL terminal for this server process:
 
 ```bash
 SESSION_NAME=scenefit-benchmark
@@ -106,12 +117,18 @@ Inside that Colab console, run:
 
 ```bash
 cd /content
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+BENCHMARK_MANIFEST=/content/results/benchmark/latest/manifest.json \
+  python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Wait until Uvicorn reports that the application is running. Do not close this
-console. The benchmark driver runs on the same Colab VM, so the simplest and
-recommended configuration uses its loopback address rather than Ngrok:
+The first benchmark-mode startup should show `Encoding outfits: ... 100/100`.
+Later startups reuse `results/benchmark/latest/vector.index`. Wait until
+Uvicorn reports that the application is running, and do not close this console.
+Starting Uvicorn without `BENCHMARK_MANIFEST` retains the normal full-dataset
+indexing behavior.
+
+The benchmark driver runs on the same Colab VM, so the simplest and recommended
+configuration uses its loopback address rather than Ngrok:
 
 ```yaml
 retrieval_methods:

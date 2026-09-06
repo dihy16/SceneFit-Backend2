@@ -74,6 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-size", type=int, default=10)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--methods", nargs="+", default=None)
+    parser.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help="prepare or restore the manifest, then exit before calling workers",
+    )
     parser.add_argument("--timeout", type=int, default=3600, help="seconds allowed per scene")
     parser.add_argument(
         "--output-dir",
@@ -147,6 +152,13 @@ def main() -> int:
             "use another --output-dir or restore the original arguments"
         )
     completed = {int(index) for index in checkpoint.get("completed_scene_indices", [])}
+    if args.prepare_only:
+        print(
+            "Benchmark manifest is ready. Start Uvicorn with "
+            "BENCHMARK_MANIFEST=/content/results/benchmark/latest/manifest.json"
+        )
+        return 0
+
     for scene_index in range(args.num_scenes):
         if scene_index in completed:
             print(f"Checkpoint already contains scene {scene_index + 1}; skipping")
