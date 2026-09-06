@@ -162,6 +162,18 @@ def main() -> int:
         300,
     )
 
+    _remote_command(
+        args.session,
+        [
+            "python",
+            "-m",
+            "scripts.build_pe_index",
+            "--manifest",
+            str(REMOTE_RUN_DIR / "manifest.json"),
+        ],
+        args.timeout,
+    )
+
     checkpoint = _checkpoint_state(latest_archive)
     expected_configuration = {
         "num_scenes": args.num_scenes,

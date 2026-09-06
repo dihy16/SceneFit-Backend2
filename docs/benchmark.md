@@ -118,7 +118,9 @@ check fails, add the missing file to `data.zip` or upload it before continuing.
 
 The benchmark evaluates retrieval *workers*, not just Gemini. Prepare the
 manifest before starting the server so its vector database indexes only the
-100 benchmark outfits instead of every image in `data/2d`:
+100 benchmark outfits instead of every image in `data/2d`. This command also
+builds the separate PE-CLIP FAISS index required by the VLM method from those
+same 100 outfits:
 
 ```bash
 python scripts/run_benchmark_colab.py \

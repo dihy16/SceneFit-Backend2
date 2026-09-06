@@ -43,6 +43,6 @@ else:
 # Benchmark-mode Uvicorn builds an index containing only the outfits selected
 # by BENCHMARK_MANIFEST. Building the general full-dataset index here would do
 # duplicate work for the benchmark.
-print("Deferring visual index construction to application startup.")
+print("Deferring visual index construction to benchmark preparation and application startup.")
 
 print("Setup completed successfully.")

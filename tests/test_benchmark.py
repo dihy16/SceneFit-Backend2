@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,7 @@ from app.services.benchmark.collector import collect_rankings, normalize_ranking
 from app.services.benchmark.core import create_manifest, run_judging, write_json
 from app.services.benchmark.gemini_judge import GeminiJudge, JudgmentBatch, OutfitJudgment
 from app.services.benchmark.metrics import evaluate_benchmark, ndcg
+from scripts.build_pe_index import _image_paths
 
 
 class FakeJudge:
@@ -88,6 +90,21 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(first["outfits"], second["outfits"])
         with self.assertRaisesRegex(ValueError, "only 2"):
             create_manifest(self.root, self.scenes, self.outfits, 3, 3)
+
+    def test_pe_index_uses_only_manifest_outfits(self):
+        manifest = self.manifest()
+        manifest_path = self.root / "manifest.json"
+        write_json(manifest_path, manifest)
+        expected = [self.root / entry["path"] for entry in manifest["outfits"]]
+
+        current_directory = Path.cwd()
+        try:
+            os.chdir(self.root)
+            selected = _image_paths(self.outfits, manifest_path)
+        finally:
+            os.chdir(current_directory)
+
+        self.assertEqual([path.resolve() for path in selected], expected)
 
     def test_judging_is_incremental_and_resumable(self):
         manifest = self.manifest()
