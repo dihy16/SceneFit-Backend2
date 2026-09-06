@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
 
 from app.utils.image_utils import compose_2d_on_background
+from app.utils.candidates import parse_candidate_names
 from app.models.registry import ModelRegistry
 
 router = APIRouter()
@@ -61,6 +62,7 @@ def retrieve_best_matched_figures_pe(
 def retrieve_scene_outfit(
     image: UploadFile = File(...),
     top_k: int = Form(5),
+    candidate_names: str | None = Form(None),
     vector_db = Depends(get_vector_db),
 ):
     """
@@ -80,7 +82,8 @@ def retrieve_scene_outfit(
     # -------------------------------------------------
     # 2. Top-K
     # -------------------------------------------------
-    scores = vector_db.search_by_image(bg_path, top_k=top_k)
+    candidates = parse_candidate_names(candidate_names)
+    scores = vector_db.search_by_image(bg_path, top_k=top_k, allowed_names=candidates)
 
     # -------------------------------------------------
     # 3. Format results

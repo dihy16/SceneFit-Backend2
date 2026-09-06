@@ -14,6 +14,7 @@ from app.models.registry import ModelRegistry
 from app.utils.util import load_str_images_from_folder
 from app.services.clothes_captions import generate_clothes_captions_json
 from app.api.v1.endpoints.aesthetic_ep import score_outfits
+from app.utils.candidates import parse_candidate_names
 router = APIRouter()
 
 BG_DIR = Path("app/uploads/bg")
@@ -244,7 +245,11 @@ def get_best_clothes_by_tournament(image: UploadFile = File(...)):
 from app.services.retrieval.samag_pipeline import SaMaGPipeline
 
 @router.post("/vlm-faiss-composed-retrieval")
-def composed_retrieval(image: UploadFile = File(...), top_k: int = 10):
+def composed_retrieval(
+    image: UploadFile = File(...),
+    top_k: int = Form(10),
+    candidate_names: str | None = Form(None),
+):
     bg_path = _save_bg_upload(image)
 
     # -------------------------
@@ -263,7 +268,10 @@ def composed_retrieval(image: UploadFile = File(...), top_k: int = 10):
         .extract_visual_features(bg_path)
         .extract_semantic_features(bg_path)
         .formulate_query(w_semantic=0.4, w_scene=0.4, w_img=0.2)
-        .execute_faiss_search(top_k=top_k)
+        .execute_faiss_search(
+            top_k=top_k,
+            candidate_names=parse_candidate_names(candidate_names),
+        )
         .rerank_candidates()
         .get_results()
     )

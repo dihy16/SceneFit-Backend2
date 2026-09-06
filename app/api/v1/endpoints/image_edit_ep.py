@@ -11,6 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, Request, Depends, HTTPExc
 from app.services.image_edit.service import edit_image_scene_img, edit_image_outfit_desc, get_outfit_suggestion_remote
 from app.models.registry import ModelRegistry
 from app.services.asr.service import load_audio_from_upload, convert_speech_to_text
+from app.utils.candidates import parse_candidate_names
 
 router = APIRouter()
 
@@ -47,6 +48,7 @@ def _save_upload(file: UploadFile, directory: Path) -> Path:
 def retrieve_clothes_image_edit(
     image: UploadFile = File(...),
     top_k: int = Form(5),
+    candidate_names: str | None = Form(None),
     gender: str = Form("male"),
     crop_clothes: bool = Form(True),
     return_metadata: bool = Form(True),
@@ -89,7 +91,8 @@ def retrieve_clothes_image_edit(
     # 3. Score using PE-Core model
     # -------------------------------------------------
     print("[image_edit_ep] Retrieving best matched clothes via vector DB...")
-    scores = vector_db.search_by_image(processed_image_path, top_k=top_k)
+    candidates = parse_candidate_names(candidate_names)
+    scores = vector_db.search_by_image(processed_image_path, top_k=top_k, allowed_names=candidates)
 
     session_id = uuid.uuid4().hex
     edited_path_raw = edit_result.get("edited_path") if edit_result else processed_image_path
@@ -116,6 +119,7 @@ def retrieve_clothes_image_edit(
 def retrieve_clothes_image_edit_flux(
     image: UploadFile = File(...),
     top_k: int = Form(5),
+    candidate_names: str | None = Form(None),
     gender: str = Form("male"),
     crop_clothes: bool = Form(True),
     return_metadata: bool = Form(True),
@@ -162,7 +166,8 @@ def retrieve_clothes_image_edit_flux(
     # 4. Score using PE-Core model
     # -------------------------------------------------
     print("[image_edit_ep] Retrieving best matched clothes via vector DB...")
-    scores = vector_db.search_by_image(processed_image_path, top_k=top_k)
+    candidates = parse_candidate_names(candidate_names)
+    scores = vector_db.search_by_image(processed_image_path, top_k=top_k, allowed_names=candidates)
 
     session_id = uuid.uuid4().hex
     edited_path_raw = edit_result.get("edited_path") if edit_result else processed_image_path

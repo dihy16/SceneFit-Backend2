@@ -139,6 +139,7 @@ class PEClipMatcher:
         query_emb: torch.Tensor = None,
         clothes: List[Tuple[str, Image.Image]] | None = None,
         top_k: int | None = None,
+        candidate_names: List[str] | None = None,
     ):
         """
         If FAISS is loaded:
@@ -151,13 +152,15 @@ class PEClipMatcher:
 
         # ---------- FAISS PATH ----------
         k = top_k or 10
+        allowed = {Path(name).stem for name in candidate_names} if candidate_names is not None else None
 
     # ---------- FAISS PATH ----------
         if self.faiss_index is not None:
             query_np = query_emb.cpu().numpy().astype("float32")
 
             # scores, indices: [N, k]
-            scores, indices = self.faiss_index.search(query_np, k)
+            search_k = self.faiss_index.ntotal if allowed is not None else k
+            scores, indices = self.faiss_index.search(query_np, search_k)
 
             # aggregate by max similarity per index
             best_scores = {}
@@ -175,19 +178,22 @@ class PEClipMatcher:
                 reverse=True
             )
 
-            results = [
-                {
-                    "name_clothes": self.faiss_meta["filenames"][idx],
-                    "similarity": score,
-                }
-                for idx, score in sorted_items[:top_k]
-            ]
+            results = []
+            for idx, score in sorted_items:
+                filename = self.faiss_meta["filenames"][idx]
+                if allowed is not None and Path(filename).stem not in allowed:
+                    continue
+                results.append({"name_clothes": filename, "similarity": score})
+                if top_k and len(results) == top_k:
+                    break
 
             return results
 
         # ---------- BRUTE-FORCE PATH ----------
         assert clothes is not None, "Clothes images required for brute-force."
 
+        if allowed is not None:
+            clothes = [(name, image) for name, image in clothes if Path(name).stem in allowed]
         names, images = zip(*clothes)
         image_embs = self.encode_image(list(images))
         image_embs = F.normalize(image_embs, dim=-1)

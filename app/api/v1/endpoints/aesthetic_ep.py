@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 from app.utils.image_utils import compose_2d_on_background
 from app.models.registry import ModelRegistry
+from app.utils.candidates import parse_candidate_names, resolve_candidate_filenames
 import time
 
 router = APIRouter()
@@ -20,9 +21,20 @@ def _save_bg_upload(image: UploadFile) -> Path:
             f.write(image.file.read())
     return bg_path
 
-def score_outfits(rg_head, bg_path: Path, top_k: int = 5, batch_size: int = 300):
+def score_outfits(
+    rg_head,
+    bg_path: Path,
+    top_k: int = 5,
+    batch_size: int = 300,
+    candidate_names: list[str] | None = None,
+):
     all_scores = []
     offset = 0
+    candidate_files = (
+        resolve_candidate_filenames(candidate_names, Path("data/2d"))
+        if candidate_names is not None
+        else None
+    )
     
     while True:
         print(f"[AESTHETIC] Preparing batch {offset//batch_size + 1} ...")
@@ -30,6 +42,7 @@ def score_outfits(rg_head, bg_path: Path, top_k: int = 5, batch_size: int = 300)
         items = compose_2d_on_background(
             bg_path=bg_path,
             fg_dir="data/2d",
+            fg_files=candidate_files,
             return_format="pil",
             offset=offset,
             limit=batch_size,
@@ -65,8 +78,10 @@ def retrieve_best_fit_aesthetic(
     image: UploadFile = File(...),
     top_k: int = Form(5),
     batch_size: int = Form(100),
+    candidate_names: str | None = Form(None),
 ):
     bg_path = _save_bg_upload(image)
     model = ModelRegistry.get("aesthetic")
-    results = score_outfits(model, bg_path, top_k, batch_size)
+    candidates = parse_candidate_names(candidate_names)
+    results = score_outfits(model, bg_path, top_k, batch_size, candidates)
     return results["results"]

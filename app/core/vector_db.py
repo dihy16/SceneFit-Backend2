@@ -265,12 +265,16 @@ class VectorDatabase:
         self,
         image: Image.Image | str | Path,
         top_k: int = 5,
+        allowed_names: Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         query = self.embed_images([image])
-        return self.search(query, top_k=top_k)[0]
+        return self.search(query, top_k=top_k, allowed_names=allowed_names)[0]
 
     def search(
-        self, query_embeddings: np.ndarray, top_k: int = 5
+        self,
+        query_embeddings: np.ndarray,
+        top_k: int = 5,
+        allowed_names: Sequence[str] | None = None,
     ) -> list[list[dict[str, Any]]]:
         """Search the index with pre-computed embeddings."""
 
@@ -278,7 +282,9 @@ class VectorDatabase:
             raise RuntimeError("Index is empty; add data before searching.")
 
         query = self._as_numpy(query_embeddings)
-        scores, idx = self.index.search(query, top_k)
+        allowed = {Path(str(name)).stem for name in allowed_names} if allowed_names is not None else None
+        search_k = self.index.ntotal if allowed is not None else min(top_k, self.index.ntotal)
+        scores, idx = self.index.search(query, search_k)
 
         results: list[list[dict[str, Any]]] = []
         for row_scores, row_idx in zip(scores, idx):
@@ -287,6 +293,8 @@ class VectorDatabase:
                 if i == -1:
                     continue
                 meta = self._metadata[i] if i < len(self._metadata) else None
+                if allowed is not None and Path(str(meta)).stem not in allowed:
+                    continue
                 row.append(
                     {
                         "id": int(i),
@@ -294,6 +302,8 @@ class VectorDatabase:
                         "metadata": meta,
                     }
                 )
+                if len(row) == top_k:
+                    break
             row.sort(key=lambda x: x["score"], reverse=True)
             results.append(row)
 

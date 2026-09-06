@@ -145,7 +145,11 @@ class SaMaGPipeline:
         self.context["query_emb"] = F.normalize(query_emb, dim=-1)
         return self
 
-    def execute_faiss_search(self, top_k: int = 10) -> SaMaGPipeline:
+    def execute_faiss_search(
+        self,
+        top_k: int = 10,
+        candidate_names: List[str] | None = None,
+    ) -> SaMaGPipeline:
         """Perform Maximum Similarity Aggregation across M queries in FAISS."""
         if self.context["query_emb"] is None:
             raise ValueError("Query embedding is missing. Did you forget to call formulate_query()?")
@@ -154,6 +158,7 @@ class SaMaGPipeline:
         self.context["candidates"] = matcher.match_clothes(
             query_emb=self.context["query_emb"],
             top_k=top_k,
+            candidate_names=candidate_names,
         )
         ModelRegistry.release("pe_clip_matcher")
         return self
