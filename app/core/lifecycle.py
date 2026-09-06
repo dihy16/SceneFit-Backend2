@@ -1,77 +1,55 @@
-# app/core/lifecycle.py
+"""FastAPI application startup and shutdown lifecycle."""
 
-from fastapi import FastAPI
+from __future__ import annotations
+
+import asyncio
 from contextlib import asynccontextmanager
+
 import torch
+from fastapi import FastAPI
 
 from app.core.vector_db import VectorDatabase
-from app.models.diffusion.image_edit_model import ImageEditFlux
-from app.models.registry import ModelRegistry
-from app.models.embedding.mmemb_model import MmEmbModel
-from app.models.embedding.pe_clip_model import PEClipModel
-from app.models.vlm.vl_model import VLModel
-from app.models.embedding.pe_clip_matcher import PEClipMatcher
-from app.models.diffusion.diffusion_model import DiffusionModel
-# from app.models.vqvae.vqvae_model import VQVAEModel
-from app.core.vector_db import VectorDatabase
 
-# Expose vector DB for downstream endpoints
-vector_db: VectorDatabase | None = None
+
+STARTUP_ATTEMPTS = 3
+STARTUP_RETRY_SECONDS = 10
+
+
+async def _initialize_vector_db() -> VectorDatabase:
+    """Initialize the shared retrieval index, retrying transient failures."""
+    last_error: Exception | None = None
+    for attempt in range(1, STARTUP_ATTEMPTS + 1):
+        try:
+            return VectorDatabase()
+        except Exception as exc:
+            last_error = exc
+            print(
+                f"[START] Vector database initialization failed "
+                f"({attempt}/{STARTUP_ATTEMPTS}): {exc}"
+            )
+            if attempt < STARTUP_ATTEMPTS:
+                await asyncio.sleep(STARTUP_RETRY_SECONDS)
+
+    raise RuntimeError(
+        f"Failed to initialize the vector database after {STARTUP_ATTEMPTS} attempts"
+    ) from last_error
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    
-    # ---------- Startup ----------
+    """Prepare shared state while heavy endpoint models remain lazy-loaded."""
     torch.set_grad_enabled(False)
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-    print("[START] Backend started")
 
-    print("[START] Loading models...")
+    print("[START] Initializing vector database...")
+    app.state.vector_db = await _initialize_vector_db()
+    print("[START] Backend ready; endpoint models will load on first use")
 
-    # Try to load model weights with retry logic
-    model_registry = ModelRegistry()
-    loaded_models = 0
-
-    for _ in range(3):
-        try:
-            # Try to load each required model
-            if vector_db is None:
-                vector_db = VectorDatabase()
-
-            model_registry.fl_model = ImageEditFlux()
-            model_registry.mmemb_model = MmEmbModel()
-            model_registry.pe_clip_model = PEClipModel()
-            model_registry.vl_model = VLModel()
-            model_registry.pe_matcher = PEClipMatcher()
-            model_registry.diffusion_model = DiffusionModel()
-
-            # Validate that models loaded successfully
-            if all([
-                model_registry.fl_model,
-                model_registry.mmemb_model,
-                model_registry.pe_clip_model,
-                model_registry.vl_model,
-                model_registry.pe_matcher,
-                model_registry.diffusion_model
-            ]):
-                loaded_models = 1
-                break
-        except Exception as e:
-            print(f"[START] Model load failed: {e}")
-            import time
-            time.sleep(10)
-
-    # Check if models loaded successfully
-    if loaded_models == 0:
-        print("[ERROR] Failed to load all models after retries")
-        
-    print("[START] Models loaded")
-    print("[START] Backend started")
-
-    yield  # Application runs here
-
-    # ---------- Shutdown ----------
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    print("[Shutdown] Backend shutdown")
+    try:
+        yield
+    finally:
+        app.state.vector_db = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        print("[SHUTDOWN] Backend stopped")
