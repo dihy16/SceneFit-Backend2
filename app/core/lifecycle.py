@@ -29,6 +29,43 @@ async def lifespan(app: FastAPI):
 
     print("[START] Loading models...")
 
+    # Try to load model weights with retry logic
+    model_registry = ModelRegistry()
+    loaded_models = 0
+
+    for _ in range(3):
+        try:
+            # Try to load each required model
+            if vector_db is None:
+                vector_db = VectorDatabase()
+
+            model_registry.fl_model = ImageEditFlux()
+            model_registry.mmemb_model = MmEmbModel()
+            model_registry.pe_clip_model = PEClipModel()
+            model_registry.vl_model = VLModel()
+            model_registry.pe_matcher = PEClipMatcher()
+            model_registry.diffusion_model = DiffusionModel()
+
+            # Validate that models loaded successfully
+            if all([
+                model_registry.fl_model,
+                model_registry.mmemb_model,
+                model_registry.pe_clip_model,
+                model_registry.vl_model,
+                model_registry.pe_matcher,
+                model_registry.diffusion_model
+            ]):
+                loaded_models = 1
+                break
+        except Exception as e:
+            print(f"[START] Model load failed: {e}")
+            import time
+            time.sleep(10)
+
+    # Check if models loaded successfully
+    if loaded_models == 0:
+        print("[ERROR] Failed to load all models after retries")
+        
     print("[START] Models loaded")
     print("[START] Backend started")
 
