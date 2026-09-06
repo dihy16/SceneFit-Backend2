@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 from app.services.benchmark.collector import collect_rankings, normalize_ranking
 from app.services.benchmark.core import create_manifest, run_judging, write_json
 from app.services.benchmark.gemini_judge import GeminiJudge, JudgmentBatch, OutfitJudgment
@@ -157,6 +159,22 @@ class BenchmarkTests(unittest.TestCase):
         collect_rankings(manifest, self.root, config, output, request=request)
         self.assertEqual(len(calls), 2)  # one request per scene; second run is cached
         self.assertEqual(json.loads(calls[0][1]["candidate_names"]), expected)
+
+    def test_live_worker_config_does_not_target_proxy_routes(self):
+        config_path = Path(__file__).parents[1] / "config" / "retrieval_methods.yaml"
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        expected_endpoints = {
+            "clip": "api/v1/workers/clip",
+            "aesthetic": "api/v1/workers/aesthetic",
+            "vlm": "api/v1/workers/vlm-faiss-composed-retrieval",
+            "image_edit": "api/v1/workers/image-edit-flux",
+        }
+        actual = {
+            method: settings["endpoint"]
+            for method, settings in config["retrieval_methods"].items()
+        }
+        self.assertEqual(actual, expected_endpoints)
+        self.assertTrue(all("/retrieval/" not in endpoint for endpoint in actual.values()))
 
     def test_ndcg_ideal_and_reversed(self):
         labels = [5, 4, 2, 1]

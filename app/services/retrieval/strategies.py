@@ -228,6 +228,14 @@ class BaseRetrievalStrategy(ABC):
         cfg = _RETRIEVAL_CONFIG[self.config_key]
         base_url = cfg['url'].rstrip('/')
         endpoint_path = cfg['endpoint'].lstrip('/')
+        if endpoint_path.startswith("api/v1/retrieval/"):
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"Unsafe upstream for '{self.config_key}': /api/v1/retrieval/* "
+                    "is a proxy route. Configure an /api/v1/workers/* endpoint."
+                ),
+            )
         url = f"{base_url}/{endpoint_path}"
         print(f"[{tag}] -> {url}  (top_k={top_k})")
 

@@ -1,25 +1,25 @@
-# Configuration for retrieval method endpoints
-# Each method is hosted on a separate server
+# Concrete worker endpoints. Keep these separate from /api/v1/retrieval/*,
+# whose routes proxy to the workers configured here.
 
 retrieval_methods:
   clip:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/clip"
+    endpoint: "api/v1/workers/clip"
     description: "CLIP-based vector database retrieval"
   
   image_edit:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/image-edit-flux"
+    endpoint: "api/v1/workers/image-edit-flux"
     description: "Image edit model retrieval"
   
   vlm:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/vlm-faiss-composed-retrieval"
+    endpoint: "api/v1/workers/vlm-faiss-composed-retrieval"
     description: "Vision-Language Model retrieval"
   
   aesthetic:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/aesthetic"
+    endpoint: "api/v1/workers/aesthetic"
     description: "Aesthetic predictor retrieval"
 
 # Request timeout in seconds

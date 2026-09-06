@@ -157,17 +157,20 @@ configuration uses its loopback address rather than Ngrok:
 retrieval_methods:
   clip:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/clip"
+    endpoint: "api/v1/workers/clip"
   image_edit:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/image-edit-flux"
+    endpoint: "api/v1/workers/image-edit-flux"
   vlm:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/vlm-faiss-composed-retrieval"
+    endpoint: "api/v1/workers/vlm-faiss-composed-retrieval"
   aesthetic:
     url: "http://127.0.0.1:8000"
-    endpoint: "api/v1/retrieval/aesthetic"
+    endpoint: "api/v1/workers/aesthetic"
 ```
+
+Do not point a worker at `/api/v1/retrieval/<method>`. Those are proxy routes;
+using one as its own upstream creates a recursive request loop.
 
 Save those values in local `config/retrieval_methods.yaml`, then upload it
 from a different WSL terminal:
