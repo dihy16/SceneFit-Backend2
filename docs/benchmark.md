@@ -60,7 +60,17 @@ uv tool install google-colab-cli
 colab auth login
 ```
 
-The provided setup script clones the `main` branch from GitHub. Commit and push the benchmark implementation before using it, or the Colab VM will receive the older repository version. The script also expects the dataset archive at `/content/drive/MyDrive/VRetrieval/data.zip`.
+The provided setup script clones the `main` branch from GitHub. Commit and push the benchmark implementation before using it, or the Colab VM will receive the older repository version. For the compact benchmark workflow, create `benchmark_data.zip` locally and upload it to `/MyDrive/VRetrieval/` in Google Drive. Setup prefers that archive over the legacy full `data.zip`.
+
+```bash
+python scripts/package_benchmark_data.py --num-scenes 10 --num-outfits 100
+```
+
+`benchmark_data.zip` contains the selected 10 scenes, selected 100 outfits,
+their manifest, and available clothing metadata. It avoids transferring or
+indexing the rest of the outfit dataset. It also includes `data/ref_images/`
+when that directory exists locally. Add `man.png` and `woman.png` there before
+packaging if you intend to evaluate the `image_edit` method.
 
 From the repository directory in WSL, create a T4 session and prepare it:
 

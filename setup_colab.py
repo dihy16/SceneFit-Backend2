@@ -25,13 +25,20 @@ run_bash("pip install pyngrok ftfy 'rembg[gpu]' faiss-cpu 'qwen-vl-utils>=0.0.14
 if os.path.exists("/content/requirements.txt"):
     run_bash("pip install -r /content/requirements.txt")
 
-# 3. Extract dataset from Google Drive
-drive_data_path = "/content/drive/MyDrive/VRetrieval/data.zip"
-if os.path.exists(drive_data_path):
+# 3. Extract dataset from Google Drive. Prefer the compact benchmark archive.
+archive_candidates = [
+    "/content/drive/MyDrive/VRetrieval/benchmark_data.zip",
+    "/content/drive/MyDrive/VRetrieval/data.zip",
+]
+drive_data_path = next((path for path in archive_candidates if os.path.exists(path)), None)
+if drive_data_path:
     print("Unzipping dataset from Google Drive...")
+    # Do not retain outfits/scenes from an earlier full archive: that would
+    # defeat the compact benchmark archive and make index construction slow.
+    run_bash("rm -rf /content/data/bg /content/data/2d")
     run_bash(f"unzip -o -q {drive_data_path} -d /content")
 else:
-    print(f"WARNING: {drive_data_path} not found. Skipping unzip.")
+    print("WARNING: No benchmark_data.zip or data.zip found. Skipping unzip.")
 
 # 3. Build the visual search index
 print("Building visual search index...")

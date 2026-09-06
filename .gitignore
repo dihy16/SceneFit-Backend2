@@ -16,3 +16,4 @@ data
 .env
 /app/testing/images
 results/benchmark/
+benchmark_data.zip
