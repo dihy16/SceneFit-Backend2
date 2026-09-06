@@ -18,7 +18,6 @@ First, run the offline smoke test. It uses two scenes, five outfits, a determini
 
 ```bash
 python scripts/benchmark.py smoke
-exit
 ```
 
 Create the default 100-outfit, 10-scene manifest:
@@ -27,10 +26,10 @@ Create the default 100-outfit, 10-scene manifest:
 python scripts/benchmark.py manifest
 ```
 
-The repository currently has fewer than 10 scenes. For a development run, explicitly override the count:
+For a smaller development run, explicitly choose the scene count:
 
 ```bash
-python scripts/benchmark.py manifest --num-scenes 6
+python scripts/benchmark.py manifest --num-scenes 2
 python scripts/benchmark.py judge
 python scripts/benchmark.py collect
 python scripts/benchmark.py evaluate
@@ -41,7 +40,7 @@ python scripts/benchmark.py evaluate
 Run the complete resumable workflow with:
 
 ```bash
-python scripts/benchmark.py run --num-scenes 6
+python scripts/benchmark.py run --num-scenes 10 --num-outfits 100
 ```
 
 Set every selected worker URL in `config/retrieval_methods.yaml` before using `run`. The combined command collects worker rankings before spending Gemini quota, and each stage can also be resumed separately.
@@ -74,11 +73,8 @@ colab exec -s "$SESSION_NAME" --timeout 3600 -f setup_colab.py
 colab status -s "$SESSION_NAME"
 ```
 
-Your `.env` must contain `GEMINI_API_KEY`. Before the real run, set the live worker URLs in `config/retrieval_methods.yaml` and make sure every deployed worker supports the `candidate_names` form field. If the configuration was changed locally after setup, upload it explicitly:
-
-```bash
-colab upload -s "$SESSION_NAME" config/retrieval_methods.yaml /content/config/retrieval_methods.yaml
-```
+Your `.env` must contain `GEMINI_API_KEY`. The worker URL configuration is
+covered in the next section.
 
 Open a shell on the GPU VM:
 
@@ -92,7 +88,67 @@ Inside the Colab shell, verify the GPU and run the offline smoke test first:
 cd /content
 nvidia-smi
 python scripts/benchmark.py smoke
+exit
 ```
+
+## Start Retrieval Workers and Configure Their URLs
+
+The benchmark evaluates retrieval *workers*, not just Gemini. Start the FastAPI
+server before running the real benchmark, and keep it running for the full
+benchmark. Open a second WSL terminal for this server process:
+
+```bash
+SESSION_NAME=scenefit-benchmark
+colab console -s "$SESSION_NAME"
+```
+
+Inside that Colab console, run:
+
+```bash
+cd /content
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Wait until Uvicorn reports that the application is running. Do not close this
+console. The benchmark driver runs on the same Colab VM, so the simplest and
+recommended configuration uses its loopback address rather than Ngrok:
+
+```yaml
+retrieval_methods:
+  clip:
+    url: "http://127.0.0.1:8000"
+    endpoint: "api/v1/retrieval/clip"
+  image_edit:
+    url: "http://127.0.0.1:8000"
+    endpoint: "api/v1/retrieval/image-edit-flux"
+  vlm:
+    url: "http://127.0.0.1:8000"
+    endpoint: "api/v1/retrieval/vlm-faiss-composed-retrieval"
+  aesthetic:
+    url: "http://127.0.0.1:8000"
+    endpoint: "api/v1/retrieval/aesthetic"
+```
+
+Save those values in local `config/retrieval_methods.yaml`, then upload it
+from a different WSL terminal:
+
+```bash
+colab upload -s "$SESSION_NAME" \
+  config/retrieval_methods.yaml \
+  /content/config/retrieval_methods.yaml
+```
+
+Use an Ngrok URL only when a worker is on another machine or you need external
+access. Ensure `.env` contains `NGROK_TOKEN`, then run this from WSL while the
+Uvicorn console remains open:
+
+```bash
+colab exec -s "$SESSION_NAME" --timeout 600 -f start_ngrok.py
+```
+
+It prints `Public URL: https://...`. Use that URL in place of
+`http://127.0.0.1:8000` above, re-upload the YAML, and retain the server
+console. Use the base URL only: do not append `/docs` or an endpoint path.
 
 Run the benchmark through the local checkpoint driver (outside the Colab
 console). It completes one scene remotely, creates a cumulative archive, and
@@ -105,8 +161,9 @@ python scripts/run_benchmark_colab.py \
   --num-outfits 100
 ```
 
-After adding ten scene images, use `--num-scenes 10`. Add `--methods clip
-samag_r` to run only named entries from `config/retrieval_methods.yaml`.
+To run only named entries from `config/retrieval_methods.yaml`, add, for
+example, `--methods clip vlm`. Each selected worker must support the multipart
+`candidate_names` form field and return all 100 requested outfits exactly once.
 
 Checkpoints are saved locally under
 `results/benchmark/colab-checkpoints/`:
