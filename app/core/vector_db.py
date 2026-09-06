@@ -8,9 +8,9 @@ import faiss
 import numpy as np
 import torch
 from PIL import Image
+from tqdm.auto import tqdm
 
 from app.models.registry import ModelRegistry
-from app.utils.util import load_images_from_folder
 
 
 class VectorDatabase:
@@ -29,6 +29,7 @@ class VectorDatabase:
         auto_prepare: bool = True,
         recursive: bool = True,
         max_images: int | None = None,
+        embedding_batch_size: int = 16,
     ) -> None:
         self.embedding_model_name = embedding_model
         self.model = ModelRegistry.get(embedding_model)
@@ -46,6 +47,9 @@ class VectorDatabase:
         )
         self.recursive = recursive
         self.max_images = max_images
+        if embedding_batch_size < 1:
+            raise ValueError("embedding_batch_size must be positive")
+        self.embedding_batch_size = embedding_batch_size
 
         if auto_prepare:
             self.ensure_ready()
@@ -111,14 +115,41 @@ class VectorDatabase:
         if max_images is not None:
             file_list = file_list[: max_images]
 
-        imgs = load_images_from_folder(
-            folder_path, recursive=recursive, max_images=max_images
-        )
+        if not file_list:
+            raise RuntimeError(f"No image files found in {folder_path}")
 
-        meta = [str(p) for p in file_list]
-        meta = meta[: len(imgs)]
+        self.index = None
+        self.dim = None
+        self._metadata.clear()
+        processed = 0
+        with tqdm(
+            total=len(file_list),
+            desc="[VectorDB] Encoding outfits",
+            unit="outfit",
+        ) as progress:
+            for offset in range(0, len(file_list), self.embedding_batch_size):
+                batch_paths = file_list[offset : offset + self.embedding_batch_size]
+                batch_images: list[Image.Image] = []
+                batch_metadata: list[str] = []
+                for path in batch_paths:
+                    try:
+                        with Image.open(path) as image:
+                            batch_images.append(image.convert("RGB"))
+                        batch_metadata.append(str(path))
+                    except Exception as exc:
+                        print(f"[VectorDB] Skipping unreadable image {path}: {exc}")
 
-        self.build_from_images(imgs, meta)
+                if batch_images:
+                    self._add_embeddings(
+                        self.embed_images(batch_images),
+                        batch_metadata,
+                    )
+                processed += len(batch_paths)
+                progress.update(len(batch_paths))
+
+        if self.index is None or not self._metadata:
+            raise RuntimeError(f"No readable images found in {folder_path}")
+        print(f"[VectorDB] Encoded {len(self._metadata)}/{processed} outfits")
         self._persist_index()
 
     def _find_existing_index(self) -> tuple[Path | None, Path | None]:

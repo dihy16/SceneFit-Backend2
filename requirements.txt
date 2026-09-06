@@ -34,3 +34,4 @@ google-genai
 httpx
 PyYAML
 python-dotenv
+tqdm
