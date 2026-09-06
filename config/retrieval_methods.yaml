@@ -3,22 +3,22 @@
 
 retrieval_methods:
   clip:
-    url: "https://synonymic-knowledgeable-edgardo.ngrok-free.dev"
+    url: "http://127.0.0.1:8000"
     endpoint: "api/v1/workers/clip"
     description: "CLIP-based vector database retrieval"
   
   image_edit:
-    url: "https://synonymic-knowledgeable-edgardo.ngrok-free.dev"
+    url: "http://127.0.0.1:8000"
     endpoint: "api/v1/workers/image-edit-flux"
     description: "Image edit model retrieval"
   
   vlm:
-    url: "https://synonymic-knowledgeable-edgardo.ngrok-free.dev"
+    url: "http://127.0.0.1:8000"
     endpoint: "api/v1/workers/vlm-faiss-composed-retrieval"
     description: "Vision-Language Model retrieval"
   
   aesthetic:
-    url: "https://synonymic-knowledgeable-edgardo.ngrok-free.dev"
+    url: "http://127.0.0.1:8000"
     endpoint: "api/v1/workers/aesthetic"
     description: "Aesthetic predictor retrieval"
 
