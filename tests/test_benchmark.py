@@ -176,6 +176,18 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(actual, expected_endpoints)
         self.assertTrue(all("/retrieval/" not in endpoint for endpoint in actual.values()))
 
+    def test_image_edit_package_import_targets_service_module(self):
+        init_path = (
+            Path(__file__).parents[1]
+            / "app"
+            / "services"
+            / "image_edit"
+            / "__init__.py"
+        )
+        source = init_path.read_text(encoding="utf-8")
+        self.assertIn("from app.services.image_edit.service import", source)
+        self.assertNotIn("app.services.image_edit.service.service", source)
+
     def test_ndcg_ideal_and_reversed(self):
         labels = [5, 4, 2, 1]
         self.assertAlmostEqual(ndcg(labels, labels, 4), 1.0)
