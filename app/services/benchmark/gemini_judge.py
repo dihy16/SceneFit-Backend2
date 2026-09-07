@@ -135,16 +135,22 @@ class GeminiJudge:
                 results = [item.model_dump() for item in parsed.judgments]
                 expected_ids = [outfit_id for outfit_id, _ in outfits]
                 returned_ids = [str(item["outfit_id"]) for item in results]
-                if (
-                    len(returned_ids) != len(expected_ids)
-                    or len(returned_ids) != len(set(returned_ids))
-                    or set(returned_ids) != set(expected_ids)
-                ):
+                if set(returned_ids) != set(expected_ids):
                     raise ValueError(
                         "Judge returned a malformed outfit ID set: "
                         f"expected {expected_ids}, got {returned_ids}"
                     )
-                return results
+                if len(returned_ids) != len(expected_ids):
+                    print(
+                        "[GEMINI] Response contained duplicate rows but all "
+                        "requested outfit IDs were present; keeping the first "
+                        "judgment for each outfit",
+                        flush=True,
+                    )
+                first_by_id: dict[str, dict[str, Any]] = {}
+                for result in results:
+                    first_by_id.setdefault(str(result["outfit_id"]), result)
+                return [first_by_id[outfit_id] for outfit_id in expected_ids]
             except Exception as exc:
                 last_error = exc
                 print(
