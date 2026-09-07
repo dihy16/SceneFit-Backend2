@@ -162,18 +162,17 @@ def main() -> int:
         300,
     )
 
-    if args.methods is None or "vlm" in args.methods:
-        _remote_command(
-            args.session,
-            [
-                "python",
-                "-m",
-                "scripts.build_pe_index",
-                "--manifest",
-                str(REMOTE_RUN_DIR / "manifest.json"),
-            ],
-            args.timeout,
-        )
+    _remote_command(
+        args.session,
+        [
+            "python",
+            "-m",
+            "scripts.build_pe_index",
+            "--manifest",
+            str(REMOTE_RUN_DIR / "manifest.json"),
+        ],
+        args.timeout,
+    )
 
     checkpoint = _checkpoint_state(latest_archive)
     expected_configuration = {

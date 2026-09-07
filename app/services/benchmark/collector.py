@@ -97,16 +97,6 @@ def collect_rankings(
         if cached and cached.get("manifest_fingerprint") != fingerprint:
             raise ValueError(f"Cached ranking does not match the current manifest: {output_path}")
         scenes = cached.get("scenes", {})
-        image_edit_prompts = None
-        if method == "image_edit":
-            prompts_path = output_dir.parent / "image_edit_prompts.json"
-            if prompts_path.is_file():
-                prompts_payload = json.loads(prompts_path.read_text(encoding="utf-8"))
-                if prompts_payload.get("manifest_fingerprint") != fingerprint:
-                    raise ValueError(
-                        f"ImageEdit prompts do not match the current manifest: {prompts_path}"
-                    )
-                image_edit_prompts = prompts_payload.get("scenes", {})
 
         for scene in manifest["scenes"]:
             if scene["id"] not in selected_scene_ids:
@@ -118,22 +108,14 @@ def collect_rankings(
             for attempt in range(int(retry["max_attempts"])):
                 try:
                     scene_path = root / scene["path"]
-                    request_data = {
-                        "top_k": len(expected_ids),
-                        "candidate_names": json.dumps(expected_ids),
-                    }
-                    if image_edit_prompts is not None:
-                        outfit_description = image_edit_prompts.get(scene["id"])
-                        if not outfit_description:
-                            raise ValueError(
-                                f"No precomputed ImageEdit prompt for scene {scene['id']}"
-                            )
-                        request_data["outfit_description"] = outfit_description
                     with scene_path.open("rb") as image_stream:
                         response = request(
                             url,
                             files={"image": (scene_path.name, image_stream, "application/octet-stream")},
-                            data=request_data,
+                            data={
+                                "top_k": len(expected_ids),
+                                "candidate_names": json.dumps(expected_ids),
+                            },
                             headers={"ngrok-skip-browser-warning": "true"},
                             timeout=timeout,
                         )

@@ -124,7 +124,6 @@ def retrieve_clothes_image_edit_flux(
     crop_clothes: bool = Form(True),
     return_metadata: bool = Form(True),
     preference_text: str | None = Form(None),
-    outfit_description: str | None = Form(None),
     preference_audio: UploadFile | None = File(None),
     vector_db = Depends(get_vector_db),
 ):
@@ -144,10 +143,7 @@ def retrieve_clothes_image_edit_flux(
     pref_text = preference_text or convert_speech_to_text(preference_audio) if preference_audio else ""
     print(f"[image_edit_ep] Preference text: {pref_text}")
     
-    outfit_desc = outfit_description or get_outfit_suggestion_remote(
-        bg_path,
-        preference_text=pref_text,
-    )
+    outfit_desc = get_outfit_suggestion_remote(bg_path, preference_text=pref_text)
     print(f"[image_edit_ep] Outfit suggestion: {outfit_desc}")
 
     # -------------------------------------------------
