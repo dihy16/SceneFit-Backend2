@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 
 PROMPT_VERSION = "scene-outfit-compatibility-v1"
+DEFAULT_JUDGE_MODEL = "gemma-4-31b-it"
 
 
 class OutfitJudgment(BaseModel):
@@ -38,14 +39,14 @@ Return exactly one judgment for every supplied outfit ID. Do not rename IDs.
 
 
 class GeminiJudge:
-    """Gemini multimodal evaluator with structured output and retry/backoff."""
+    """Gemini API-hosted multimodal evaluator with retry/backoff."""
 
     prompt_version = PROMPT_VERSION
 
     def __init__(
         self,
         api_key: str | None = None,
-        model_name: str = "gemini-3.6-flash",
+        model_name: str = DEFAULT_JUDGE_MODEL,
         max_attempts: int = 3,
         base_delay: float = 2.0,
         client: Any | None = None,
@@ -115,7 +116,9 @@ class GeminiJudge:
                 if self._types is not None:
                     config = self._types.GenerateContentConfig(
                         temperature=0,
-                        thinking_config=self._types.ThinkingConfig(thinking_level="low"),
+                        thinking_config=self._types.ThinkingConfig(
+                            thinking_level="minimal"
+                        ),
                         response_mime_type="application/json",
                         response_schema=JudgmentBatch,
                     )

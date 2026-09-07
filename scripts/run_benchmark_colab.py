@@ -10,13 +10,19 @@ import argparse
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import zipfile
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from app.services.benchmark.gemini_judge import DEFAULT_JUDGE_MODEL
+
+
 REMOTE_ROOT = Path("/content")
 REMOTE_RUN_DIR = REMOTE_ROOT / "results" / "benchmark" / "latest"
 REMOTE_ARCHIVE = REMOTE_ROOT / "benchmark-checkpoint.zip"
@@ -106,20 +112,58 @@ def _download_checkpoint(session: str, destination: Path) -> None:
     partial.replace(destination)
 
 
+def _run_and_archive(
+    session: str,
+    command: list[str],
+    state: dict,
+    timeout: int,
+) -> None:
+    code = (
+        "from pathlib import Path\n"
+        "import json, shutil, subprocess\n"
+        f"command = {json.dumps(command)}\n"
+        f"result = subprocess.run(command, cwd={str(REMOTE_ROOT)!r}, text=True, capture_output=True)\n"
+        "print(result.stdout, end='')\n"
+        "if result.returncode:\n"
+        "    raise RuntimeError(\n"
+        "        'Benchmark stage failed with exit code ' + str(result.returncode) + "
+        "        ':\\n' + result.stdout + result.stderr\n"
+        "    )\n"
+        f"run_dir = Path({str(REMOTE_RUN_DIR)!r})\n"
+        f"state = {json.dumps(state)}\n"
+        "(run_dir / 'checkpoint.json').write_text(json.dumps(state, indent=2) + '\\n', encoding='utf-8')\n"
+        f"archive = Path({str(REMOTE_ARCHIVE)!r})\n"
+        "archive.unlink(missing_ok=True)\n"
+        "shutil.make_archive(str(archive.with_suffix('')), 'zip', root_dir=run_dir)\n"
+    )
+    _remote_exec(session, code, timeout)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--session", default="scenefit-benchmark")
     parser.add_argument("--num-scenes", type=int, default=10)
     parser.add_argument("--num-outfits", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--model", default="gemini-3.6-flash")
+    parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     parser.add_argument("--batch-size", type=int, default=10)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--methods", nargs="+", default=None)
-    parser.add_argument(
+    stages = parser.add_mutually_exclusive_group()
+    stages.add_argument(
         "--prepare-only",
         action="store_true",
-        help="prepare or restore the manifest, then exit before calling workers",
+        help="prepare or restore the manifest, then exit",
+    )
+    stages.add_argument(
+        "--judge-only",
+        action="store_true",
+        help="run the one-pair pilot and complete all relevance judgments, then exit",
+    )
+    stages.add_argument(
+        "--retrieve-only",
+        action="store_true",
+        help="require completed judgments, then collect rankings and evaluate",
     )
     parser.add_argument("--timeout", type=int, default=3600, help="seconds allowed per scene")
     parser.add_argument(
@@ -189,19 +233,6 @@ def main() -> int:
         flush=True,
     )
 
-    if args.methods is None or "vlm" in args.methods:
-        _remote_command(
-            args.session,
-            [
-                "python",
-                "-m",
-                "scripts.build_pe_index",
-                "--manifest",
-                str(REMOTE_RUN_DIR / "manifest.json"),
-            ],
-            args.timeout,
-        )
-
     checkpoint = _checkpoint_state(latest_archive)
     expected_configuration = {
         "num_scenes": args.num_scenes,
@@ -211,71 +242,125 @@ def main() -> int:
         "batch_size": args.batch_size,
         "methods": args.methods,
     }
+    if checkpoint and checkpoint.get("version") != 2:
+        raise ValueError(
+            "latest.zip uses the old checkpoint format; use a fresh --output-dir"
+        )
     if checkpoint and checkpoint.get("configuration") != expected_configuration:
         raise ValueError(
             "latest.zip belongs to a different benchmark configuration; "
             "use another --output-dir or restore the original arguments"
         )
-    completed = {int(index) for index in checkpoint.get("completed_scene_indices", [])}
+    pilot_completed = bool(checkpoint.get("pilot_completed", False))
+    judged = {int(index) for index in checkpoint.get("judged_scene_indices", [])}
+    retrieved = {int(index) for index in checkpoint.get("retrieved_scene_indices", [])}
+
+    def state() -> dict:
+        return {
+            "version": 2,
+            "configuration": expected_configuration,
+            "pilot_completed": pilot_completed,
+            "judged_scene_indices": sorted(judged),
+            "retrieved_scene_indices": sorted(retrieved),
+        }
+
     if args.prepare_only:
         print(
-            "Benchmark manifest is ready. Start Uvicorn with "
-            "BENCHMARK_MANIFEST=/content/results/benchmark/latest/manifest.json"
+            "Benchmark manifest is ready. Run this driver again with --judge-only; "
+            "Uvicorn is not needed for judging."
         )
         return 0
 
+    if not args.retrieve_only:
+        if not pilot_completed:
+            print("[benchmark] Running one-pair evaluator pilot (not saved as a label)")
+            pilot_completed = True
+            _run_and_archive(
+                args.session,
+                [
+                    "python", "scripts/benchmark.py", "pilot",
+                    "--model", args.model,
+                    "--max-attempts", str(args.max_attempts),
+                ],
+                state(),
+                args.timeout,
+            )
+            pilot_archive = output_dir / "pilot.zip"
+            _download_checkpoint(args.session, pilot_archive)
+            shutil.copy2(pilot_archive, latest_archive)
+
+        for scene_index in range(args.num_scenes):
+            if scene_index in judged:
+                print(f"Judgments already contain scene {scene_index + 1}; skipping")
+                continue
+            print(
+                f"[benchmark] Judging scene {scene_index + 1}/{args.num_scenes}",
+                flush=True,
+            )
+            judged.add(scene_index)
+            command = [
+                "python", "scripts/benchmark.py", "judge",
+                "--scene-index", str(scene_index),
+                "--model", args.model,
+                "--batch-size", str(args.batch_size),
+                "--max-attempts", str(args.max_attempts),
+            ]
+            _run_and_archive(args.session, command, state(), args.timeout)
+            archive = output_dir / f"judge-scene-{scene_index + 1:03d}.zip"
+            _download_checkpoint(args.session, archive)
+            shutil.copy2(archive, latest_archive)
+            print(f"Downloaded completed judgments to {archive}")
+
+        if args.judge_only:
+            print(
+                "All judgments are complete. Start Uvicorn, then rerun this driver "
+                "with --retrieve-only."
+            )
+            return 0
+
+    _remote_command(
+        args.session,
+        [
+            "python", "scripts/benchmark.py", "validate-judgments",
+            "--model", args.model,
+            "--batch-size", str(args.batch_size),
+        ],
+        300,
+    )
+
+    if args.methods is None or "vlm" in args.methods:
+        _remote_command(
+            args.session,
+            [
+                "python", "-m", "scripts.build_pe_index",
+                "--manifest", str(REMOTE_RUN_DIR / "manifest.json"),
+            ],
+            args.timeout,
+        )
+
     for scene_index in range(args.num_scenes):
-        if scene_index in completed:
-            print(f"Checkpoint already contains scene {scene_index + 1}; skipping")
+        if scene_index in retrieved:
+            print(f"Rankings already contain scene {scene_index + 1}; skipping")
             continue
         print(
-            f"[benchmark] Running scene {scene_index + 1}/{args.num_scenes} "
+            f"[benchmark] Retrieving scene {scene_index + 1}/{args.num_scenes} "
             f"with methods: {', '.join(args.methods or ['all configured'])}",
             flush=True,
         )
+        retrieved.add(scene_index)
         command = [
-            "python",
-            "scripts/benchmark.py",
-            "scene",
-            "--scene-index",
-            str(scene_index),
-            "--model",
-            args.model,
-            "--batch-size",
-            str(args.batch_size),
-            "--max-attempts",
-            str(args.max_attempts),
+            "python", "scripts/benchmark.py", "collect",
+            "--scene-index", str(scene_index),
+            "--model", args.model,
+            "--batch-size", str(args.batch_size),
         ]
         if args.methods:
             command.extend(["--methods", *args.methods])
-        state = {
-            "completed_scene_indices": sorted(completed | {scene_index}),
-            "configuration": expected_configuration,
-        }
-        code = (
-            "from pathlib import Path\n"
-            "import json, shutil, subprocess\n"
-            f"command = {json.dumps(command)}\n"
-            f"result = subprocess.run(command, cwd={str(REMOTE_ROOT)!r}, text=True, capture_output=True)\n"
-            "print(result.stdout, end='')\n"
-            "if result.returncode:\n"
-            "    raise RuntimeError(\n"
-            "        'Benchmark scene failed with exit code ' + str(result.returncode) + "
-            "        ':\\n' + result.stdout + result.stderr\n"
-            "    )\n"
-            f"run_dir = Path({str(REMOTE_RUN_DIR)!r})\n"
-            f"state = {json.dumps(state)}\n"
-            "(run_dir / 'checkpoint.json').write_text(json.dumps(state, indent=2) + '\\n', encoding='utf-8')\n"
-            f"archive = Path({str(REMOTE_ARCHIVE)!r})\n"
-            "archive.unlink(missing_ok=True)\n"
-            "shutil.make_archive(str(archive.with_suffix('')), 'zip', root_dir=run_dir)\n"
-        )
-        _remote_exec(args.session, code, args.timeout)
-        scene_archive = output_dir / f"scene-{scene_index + 1:03d}.zip"
-        _download_checkpoint(args.session, scene_archive)
-        shutil.copy2(scene_archive, latest_archive)
-        completed.add(scene_index)
-        print(f"Downloaded completed scene {scene_index + 1} to {scene_archive}")
+        _run_and_archive(args.session, command, state(), args.timeout)
+        archive = output_dir / f"scene-{scene_index + 1:03d}.zip"
+        _download_checkpoint(args.session, archive)
+        shutil.copy2(archive, latest_archive)
+        print(f"Downloaded completed rankings to {archive}")
 
     _remote_command(args.session, ["python", "scripts/benchmark.py", "evaluate"], args.timeout)
     _remote_exec(

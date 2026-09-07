@@ -1,4 +1,4 @@
-"""Run the Gemini-judged SceneFit retrieval benchmark."""
+"""Run the VLM-judged SceneFit retrieval benchmark."""
 
 from __future__ import annotations
 
@@ -27,9 +27,14 @@ from app.services.benchmark.core import (
     load_manifest,
     manifest_fingerprint,
     run_judging,
+    validate_judgments,
     write_json,
 )
-from app.services.benchmark.gemini_judge import GeminiJudge
+from app.services.benchmark.gemini_judge import (
+    DEFAULT_JUDGE_MODEL,
+    PROMPT_VERSION,
+    GeminiJudge,
+)
 from app.services.benchmark.metrics import evaluate_benchmark
 
 
@@ -88,21 +93,44 @@ def build_parser() -> argparse.ArgumentParser:
     _add_manifest_inputs(manifest_parser)
     manifest_parser.add_argument("--output", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
 
-    judge_parser = subparsers.add_parser("judge", help="create or resume Gemini relevance judgments")
+    judge_parser = subparsers.add_parser("judge", help="create or resume VLM relevance judgments")
     judge_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
     judge_parser.add_argument("--output", type=_path, default=DEFAULT_RUN_DIR / "judgments.jsonl")
-    judge_parser.add_argument("--model", default="gemini-3.6-flash")
+    judge_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     judge_parser.add_argument("--batch-size", type=int, default=10)
     judge_parser.add_argument("--max-attempts", type=int, default=3)
+    judge_parser.add_argument("--scene-index", type=int)
+
+    pilot_parser = subparsers.add_parser(
+        "pilot", help="score one pair without writing benchmark judgments"
+    )
+    pilot_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
+    pilot_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
+    pilot_parser.add_argument("--scene-index", type=int, default=0)
+    pilot_parser.add_argument("--outfit-index", type=int, default=0)
+    pilot_parser.add_argument("--max-attempts", type=int, default=3)
+
+    validation_parser = subparsers.add_parser(
+        "validate-judgments",
+        help="require a complete compatible relevance matrix",
+    )
+    validation_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
+    validation_parser.add_argument("--judgments", type=_path, default=DEFAULT_RUN_DIR / "judgments.jsonl")
+    validation_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
+    validation_parser.add_argument("--batch-size", type=int, default=10)
 
     collect_parser = subparsers.add_parser("collect", help="collect or resume live worker rankings")
     collect_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
+    collect_parser.add_argument("--judgments", type=_path, default=DEFAULT_RUN_DIR / "judgments.jsonl")
     collect_parser.add_argument("--output-dir", type=_path, default=DEFAULT_RUN_DIR / "rankings")
     collect_parser.add_argument("--config", type=_path, default=REPO_ROOT / "config" / "retrieval_methods.yaml")
     collect_parser.add_argument("--methods", nargs="+", default=None)
+    collect_parser.add_argument("--scene-index", type=int)
+    collect_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
+    collect_parser.add_argument("--batch-size", type=int, default=10)
 
     scene_parser = subparsers.add_parser(
-        "scene", help="collect and judge one scene as a resumable checkpoint"
+        "scene", help="judge then collect one scene as a resumable checkpoint"
     )
     scene_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
     scene_parser.add_argument("--scene-index", type=int, required=True)
@@ -110,7 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
     scene_parser.add_argument("--rankings-dir", type=_path, default=DEFAULT_RUN_DIR / "rankings")
     scene_parser.add_argument("--config", type=_path, default=REPO_ROOT / "config" / "retrieval_methods.yaml")
     scene_parser.add_argument("--methods", nargs="+", default=None)
-    scene_parser.add_argument("--model", default="gemini-3.6-flash")
+    scene_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     scene_parser.add_argument("--batch-size", type=int, default=10)
     scene_parser.add_argument("--max-attempts", type=int, default=3)
 
@@ -131,12 +159,20 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="run manifest, judge, collect, and evaluate")
     _add_manifest_inputs(run_parser)
     run_parser.add_argument("--run-dir", type=_path, default=DEFAULT_RUN_DIR)
-    run_parser.add_argument("--model", default="gemini-3.6-flash")
+    run_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     run_parser.add_argument("--batch-size", type=int, default=10)
     run_parser.add_argument("--max-attempts", type=int, default=3)
     run_parser.add_argument("--config", type=_path, default=REPO_ROOT / "config" / "retrieval_methods.yaml")
     run_parser.add_argument("--methods", nargs="+", default=None)
     return parser
+
+
+def _scene_id(manifest: dict, scene_index: int) -> str:
+    if scene_index < 0 or scene_index >= len(manifest["scenes"]):
+        raise ValueError(
+            f"scene-index must be between 0 and {len(manifest['scenes']) - 1}"
+        )
+    return str(manifest["scenes"][scene_index]["id"])
 
 
 def main() -> int:
@@ -149,31 +185,74 @@ def main() -> int:
     if args.command == "judge":
         manifest = load_manifest(args.manifest)
         judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
-        count = run_judging(manifest, REPO_ROOT, args.output, judge, args.batch_size)
+        scene_ids = (
+            [_scene_id(manifest, args.scene_index)]
+            if args.scene_index is not None
+            else None
+        )
+        count = run_judging(
+            manifest, REPO_ROOT, args.output, judge, args.batch_size, scene_ids
+        )
         print(f"Appended {count} judgments to {args.output}")
+        return 0
+
+    if args.command == "pilot":
+        manifest = load_manifest(args.manifest)
+        scene_id = _scene_id(manifest, args.scene_index)
+        if args.outfit_index < 0 or args.outfit_index >= len(manifest["outfits"]):
+            raise ValueError(
+                f"outfit-index must be between 0 and {len(manifest['outfits']) - 1}"
+            )
+        scene = manifest["scenes"][args.scene_index]
+        outfit = manifest["outfits"][args.outfit_index]
+        judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+        result = judge.score_batch(
+            REPO_ROOT / scene["path"],
+            [(outfit["id"], REPO_ROOT / outfit["path"])],
+        )
+        print(json.dumps({"scene_id": scene_id, "judgment": result[0]}, indent=2))
+        return 0
+
+    if args.command == "validate-judgments":
+        manifest = load_manifest(args.manifest)
+        count = validate_judgments(
+            manifest,
+            args.judgments,
+            args.model,
+            PROMPT_VERSION,
+            args.batch_size,
+        )
+        print(f"Judgment matrix complete: {count} pairs")
         return 0
 
     if args.command == "collect":
         manifest = load_manifest(args.manifest)
-        paths = collect_rankings(manifest, REPO_ROOT, args.config, args.output_dir, args.methods)
+        validate_judgments(
+            manifest,
+            args.judgments,
+            args.model,
+            PROMPT_VERSION,
+            args.batch_size,
+        )
+        scene_ids = (
+            [_scene_id(manifest, args.scene_index)]
+            if args.scene_index is not None
+            else None
+        )
+        paths = collect_rankings(
+            manifest,
+            REPO_ROOT,
+            args.config,
+            args.output_dir,
+            args.methods,
+            scene_ids=scene_ids,
+        )
         print(f"Rankings ready: {', '.join(str(path) for path in paths)}")
         return 0
 
     if args.command == "scene":
         manifest = load_manifest(args.manifest)
-        if args.scene_index < 0 or args.scene_index >= len(manifest["scenes"]):
-            raise ValueError(
-                f"scene-index must be between 0 and {len(manifest['scenes']) - 1}"
-            )
-        scene_id = manifest["scenes"][args.scene_index]["id"]
-        collect_rankings(
-            manifest,
-            REPO_ROOT,
-            args.config,
-            args.rankings_dir,
-            args.methods,
-            scene_ids=[scene_id],
-        )
+        scene_id = _scene_id(manifest, args.scene_index)
         judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
         count = run_judging(
             manifest,
@@ -181,6 +260,21 @@ def main() -> int:
             args.judgments,
             judge,
             args.batch_size,
+            scene_ids=[scene_id],
+        )
+        validate_judgments(
+            manifest,
+            args.judgments,
+            args.model,
+            PROMPT_VERSION,
+            args.batch_size,
+        )
+        collect_rankings(
+            manifest,
+            REPO_ROOT,
+            args.config,
+            args.rankings_dir,
+            args.methods,
             scene_ids=[scene_id],
         )
         print(
@@ -249,9 +343,16 @@ def main() -> int:
     run_dir: Path = args.run_dir
     manifest_path = run_dir / "manifest.json"
     manifest = load_manifest(manifest_path) if manifest_path.exists() else _create_manifest(args, manifest_path)
-    collect_rankings(manifest, REPO_ROOT, args.config, run_dir / "rankings", args.methods)
     judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
     run_judging(manifest, REPO_ROOT, run_dir / "judgments.jsonl", judge, args.batch_size)
+    validate_judgments(
+        manifest,
+        run_dir / "judgments.jsonl",
+        args.model,
+        PROMPT_VERSION,
+        args.batch_size,
+    )
+    collect_rankings(manifest, REPO_ROOT, args.config, run_dir / "rankings", args.methods)
     result = evaluate_benchmark(
         manifest,
         run_dir / "judgments.jsonl",

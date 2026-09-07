@@ -6,6 +6,7 @@ import math
 import random
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Protocol, Sequence
 
 
@@ -156,10 +157,55 @@ def _completed_pairs(
                     raise ValueError(
                         f"Judgment cache is incompatible with the manifest or evaluator at line {line_number}"
                     )
-                completed.add((scene_id, outfit_id))
+                pair = (scene_id, outfit_id)
+                if pair in completed:
+                    raise ValueError(
+                        f"Duplicate judgment for scene {scene_id} and outfit "
+                        f"{outfit_id} at line {line_number}"
+                    )
+                completed.add(pair)
             except (json.JSONDecodeError, KeyError) as exc:
                 raise ValueError(f"Invalid judgment JSONL at line {line_number}") from exc
     return completed
+
+
+def validate_judgments(
+    manifest: dict[str, Any],
+    output_path: Path,
+    judge_model: str,
+    prompt_version: str,
+    batch_size: int,
+) -> int:
+    """Require a complete, compatible judgment matrix before retrieval."""
+    metadata_path = output_path.with_suffix(".meta.json")
+    if not output_path.is_file() or not metadata_path.is_file():
+        raise FileNotFoundError(
+            f"Judgment artifacts are incomplete: {output_path} and {metadata_path} "
+            "must both exist"
+        )
+    expected_metadata = {
+        "version": 1,
+        "manifest_fingerprint": manifest_fingerprint(manifest),
+        "judge_model": judge_model,
+        "prompt_version": prompt_version,
+        "batch_size": batch_size,
+    }
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if metadata != expected_metadata:
+        raise ValueError(
+            f"Judgment cache metadata does not match this run: {metadata_path}"
+        )
+    identity = SimpleNamespace(
+        model_name=judge_model,
+        prompt_version=prompt_version,
+    )
+    completed = _completed_pairs(output_path, manifest, identity)
+    expected_count = len(manifest["scenes"]) * len(manifest["outfits"])
+    if len(completed) != expected_count:
+        raise ValueError(
+            f"Judgments are incomplete: {len(completed)}/{expected_count} pairs finished"
+        )
+    return len(completed)
 
 
 def run_judging(

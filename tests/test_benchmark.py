@@ -11,9 +11,21 @@ from pathlib import Path
 import yaml
 
 from app.services.benchmark.collector import collect_rankings, normalize_ranking
-from app.services.benchmark.core import create_manifest, run_judging, write_json
-from app.services.benchmark.gemini_judge import GeminiJudge, JudgmentBatch, OutfitJudgment
+from app.services.benchmark.core import (
+    create_manifest,
+    run_judging,
+    validate_judgments,
+    write_json,
+)
+from app.services.benchmark.gemini_judge import (
+    DEFAULT_JUDGE_MODEL,
+    GeminiJudge,
+    JudgmentBatch,
+    OutfitJudgment,
+)
 from app.services.benchmark.metrics import evaluate_benchmark, ndcg
+from scripts.benchmark import build_parser as build_benchmark_parser
+from scripts.run_benchmark_colab import build_parser as build_colab_parser
 from scripts.build_pe_index import _image_paths
 
 
@@ -35,9 +47,11 @@ class FakeJudge:
 class FakeModels:
     def __init__(self):
         self.calls = 0
+        self.last_request = None
 
     def generate_content(self, **kwargs):
         self.calls += 1
+        self.last_request = kwargs
         if self.calls == 1:
             raise RuntimeError("rate limited")
         response = type("Response", (), {})()
@@ -139,6 +153,44 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(len(rows), 6)
         self.assertTrue(all(1 <= row["score"] <= 5 for row in rows))
 
+    def test_complete_judgments_are_required_before_retrieval(self):
+        manifest = self.manifest()
+        output = self.root / "judgments.jsonl"
+        judge = FakeJudge()
+        first_scene = manifest["scenes"][0]["id"]
+        run_judging(
+            manifest,
+            self.root,
+            output,
+            judge,
+            batch_size=3,
+            scene_ids=[first_scene],
+        )
+        with self.assertRaisesRegex(ValueError, "3/6 pairs"):
+            validate_judgments(
+                manifest, output, judge.model_name, judge.prompt_version, 3
+            )
+        run_judging(manifest, self.root, output, judge, batch_size=3)
+        self.assertEqual(
+            validate_judgments(
+                manifest, output, judge.model_name, judge.prompt_version, 3
+            ),
+            6,
+        )
+
+    def test_duplicate_judgments_are_rejected(self):
+        manifest = self.manifest()
+        output = self.root / "judgments.jsonl"
+        judge = FakeJudge()
+        run_judging(manifest, self.root, output, judge, batch_size=3)
+        first = output.read_text(encoding="utf-8").splitlines()[0]
+        with output.open("a", encoding="utf-8") as stream:
+            stream.write(first + "\n")
+        with self.assertRaisesRegex(ValueError, "Duplicate judgment"):
+            validate_judgments(
+                manifest, output, judge.model_name, judge.prompt_version, 3
+            )
+
     def test_normalize_ranking_requires_exact_pool(self):
         payload = [{"name": "a.png", "score": 0.9}, {"outfit_name": "b", "similarity": 0.8}]
         ranking = normalize_ranking(payload, ["a", "b"])
@@ -216,6 +268,26 @@ class BenchmarkTests(unittest.TestCase):
         result = judge.score_batch(self.scenes / "scene_0.png", [("o1", self.outfits / "outfit_0.png")])
         self.assertEqual(result[0]["score"], 5)
         self.assertEqual(client.models.calls, 2)
+        self.assertEqual(client.models.last_request["model"], DEFAULT_JUDGE_MODEL)
+
+    def test_cli_defaults_and_separate_stages(self):
+        benchmark_parser = build_benchmark_parser()
+        self.assertEqual(
+            benchmark_parser.parse_args(["judge"]).model,
+            "gemma-4-31b-it",
+        )
+        self.assertEqual(
+            benchmark_parser.parse_args(["validate-judgments"]).model,
+            DEFAULT_JUDGE_MODEL,
+        )
+        self.assertEqual(
+            benchmark_parser.parse_args(["judge", "--scene-index", "2"]).scene_index,
+            2,
+        )
+        colab_parser = build_colab_parser()
+        self.assertTrue(colab_parser.parse_args(["--judge-only"]).judge_only)
+        self.assertTrue(colab_parser.parse_args(["--retrieve-only"]).retrieve_only)
+        self.assertEqual(colab_parser.parse_args([]).model, DEFAULT_JUDGE_MODEL)
 
     def test_small_end_to_end_evaluation(self):
         manifest = self.manifest()
