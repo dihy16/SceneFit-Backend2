@@ -12,6 +12,48 @@ python -m pip install -r requirements.txt
 
 Generated artifacts are written under `results/benchmark/` and are resumable. Free-tier Gemini inputs may be used by Google to improve its products; use a paid project if that is unsuitable for the dataset.
 
+## Colab notebook workflow
+
+Upload [benchmark_colab.ipynb](../benchmark_colab.ipynb) to Colab and run its
+cells in order. It mounts Drive, clones this repository, extracts
+`/MyDrive/VRetrieval/data.zip`, and saves every checkpoint below
+`/MyDrive/VRetrieval/benchmark/checkpoints-light-gemma4/`.
+
+Add `GEMINI_API_KEY` to Colab Secrets before running the notebook. Add
+`HF_TOKEN` if Hugging Face access is required. The notebook writes an ephemeral
+`.env` containing only accepted application settings, without displaying secret
+values. It defaults to `clip aesthetic`; change the `METHODS` cell only when
+starting with a fresh checkpoint directory.
+
+The notebook uses the same terminal-compatible commands as the runtime helper:
+
+```bash
+cd /content/SceneFit-Backend2
+python scripts/run_benchmark_runtime.py prepare --checkpoint-dir /content/drive/MyDrive/VRetrieval/benchmark/checkpoints-light-gemma4 --methods clip aesthetic
+python scripts/run_benchmark_runtime.py judge --checkpoint-dir /content/drive/MyDrive/VRetrieval/benchmark/checkpoints-light-gemma4 --methods clip aesthetic
+```
+
+After judging, leave Uvicorn running in the Colab terminal:
+
+```bash
+cd /content/SceneFit-Backend2
+BENCHMARK_MANIFEST=/content/SceneFit-Backend2/results/benchmark/latest/manifest.json \
+  python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then run the notebook retrieval cell, or this terminal command in another
+terminal:
+
+```bash
+python scripts/run_benchmark_runtime.py retrieve --checkpoint-dir /content/drive/MyDrive/VRetrieval/benchmark/checkpoints-light-gemma4 --methods clip aesthetic
+```
+
+The helper restores `latest.zip` on a fresh runtime, saves
+`judge-scene-NNN.zip` and `scene-NNN.zip` after each completed scene, and saves
+`final.zip` after evaluation. It rejects a checkpoint whose scene count, outfit
+count, seed, judge model, batch size, or method list differs from the current
+command.
+
 ## Commands
 
 First, run the offline smoke test. It uses two scenes, five outfits, a deterministic fixture judge, and synthetic rankings, so it requires no GPU, API key, or worker:
