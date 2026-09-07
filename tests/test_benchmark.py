@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,6 +27,13 @@ from app.services.benchmark.gemini_judge import (
 from app.services.benchmark.metrics import evaluate_benchmark, ndcg
 from scripts.benchmark import build_parser as build_benchmark_parser
 from scripts.run_benchmark_colab import build_parser as build_colab_parser
+from scripts.run_benchmark_runtime import (
+    _load_state,
+    _restore,
+    _save_checkpoint,
+    _validate_state,
+    build_parser as build_runtime_parser,
+)
 from scripts.build_pe_index import _image_paths
 
 
@@ -288,6 +296,44 @@ class BenchmarkTests(unittest.TestCase):
         self.assertTrue(colab_parser.parse_args(["--judge-only"]).judge_only)
         self.assertTrue(colab_parser.parse_args(["--retrieve-only"]).retrieve_only)
         self.assertEqual(colab_parser.parse_args([]).model, DEFAULT_JUDGE_MODEL)
+
+    def test_runtime_checkpoint_round_trip_and_configuration_checks(self):
+        runtime_parser = build_runtime_parser()
+        checkpoint_dir = self.root / "checkpoints"
+        parsed = runtime_parser.parse_args(
+            ["prepare", "--checkpoint-dir", str(checkpoint_dir)]
+        )
+        self.assertEqual(parsed.methods, ["clip", "aesthetic"])
+        self.assertEqual(parsed.model, DEFAULT_JUDGE_MODEL)
+
+        run_dir = self.root / "run"
+        run_dir.mkdir()
+        (run_dir / "manifest.json").write_text("{}", encoding="utf-8")
+        state = {
+            "version": 2,
+            "configuration": {"model": DEFAULT_JUDGE_MODEL},
+            "pilot_completed": True,
+            "judged_scene_indices": [0],
+            "retrieved_scene_indices": [],
+        }
+        _save_checkpoint(run_dir, checkpoint_dir, "prepared", state)
+        self.assertEqual(_load_state(checkpoint_dir / "latest.zip"), state)
+
+        shutil.rmtree(run_dir)
+        _restore(checkpoint_dir, run_dir)
+        self.assertTrue((run_dir / "manifest.json").is_file())
+        with self.assertRaisesRegex(ValueError, "different benchmark configuration"):
+            _validate_state(state, {"model": "other-model"})
+
+    def test_colab_notebooks_do_not_embed_ngrok_credentials(self):
+        root = Path(__file__).parents[1]
+        benchmark_notebook = json.loads(
+            (root / "benchmark_colab.ipynb").read_text(encoding="utf-8")
+        )
+        old_notebook = (root / "run_colab.ipynb").read_text(encoding="utf-8")
+        self.assertEqual(benchmark_notebook["nbformat"], 4)
+        self.assertIn("userdata.get('NGROK_TOKEN')", old_notebook)
+        self.assertNotIn("ngrok.set_auth_token(\"", old_notebook)
 
     def test_small_end_to_end_evaluation(self):
         manifest = self.manifest()
