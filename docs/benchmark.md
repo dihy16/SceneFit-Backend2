@@ -49,9 +49,13 @@ The output contains the data manifest and hashes, append-only `judgments.jsonl`,
 
 ## Running with a Google Colab GPU
 
-Gemini 3.7 Flash runs in Google's API and does not use the Colab GPU. The GPU is useful for the CLIP, image-edit, VLM/SaMaG-R, and aesthetic retrieval workers. The benchmark CLI may run in the same Colab session or locally while calling remote GPU workers.
+Gemini 3.7 Flash runs in Google's API and does not use the Colab GPU. For the
+current light phase, a T4 runs only the CLIP and Aesthetic retrieval workers.
+The VLM/SaMaG-R and ImageEdit methods can be run later on a separate GPU
+machine using the saved benchmark artifacts.
 
-If all retrieval workers already run on other machines, the benchmark session itself does not benefit from a GPU; create a CPU session instead. The A100 command below is appropriate when this Colab environment also hosts retrieval-model work.
+If all retrieval workers already run on other machines, the benchmark session
+itself does not benefit from a GPU; create a CPU session instead.
 
 The official Colab CLI supports Linux and macOS. On Windows, run these commands from WSL, not PowerShell. Install and authenticate once:
 
@@ -68,7 +72,7 @@ scenes, outfits, and active benchmark run, extracts `data.zip`, and defers index
 construction so benchmark-mode startup can encode only the selected 100
 outfits.
 
-From the repository directory in WSL, create an A100 session and prepare it:
+From the repository directory in WSL, create a T4 session and prepare it:
 
 ```bash
 SESSION_NAME=scenefit-benchmark
@@ -111,22 +115,24 @@ python scripts/benchmark.py smoke
 exit
 ```
 
-The two reference-image checks are required for the `image_edit` method. If a
-check fails, add the missing file to `data.zip` or upload it before continuing.
+The two reference-image checks are needed only for the later `image_edit`
+phase. They may be skipped for this CLIP/Aesthetic-only Colab run.
 
 ## Start Retrieval Workers and Configure Their URLs
 
 The benchmark evaluates retrieval *workers*, not just Gemini. Prepare the
 manifest before starting the server so its vector database indexes only the
-100 benchmark outfits instead of every image in `data/2d`. This command also
-builds the separate PE-CLIP FAISS index required by the VLM method from those
-same 100 outfits:
+100 benchmark outfits instead of every image in `data/2d`. For this light
+phase, selecting only CLIP and Aesthetic also skips the VLM-only PE-CLIP FAISS
+index build:
 
 ```bash
 python scripts/run_benchmark_colab.py \
   --session "$SESSION_NAME" \
   --num-scenes 10 \
   --num-outfits 100 \
+  --methods clip aesthetic \
+  --output-dir results/benchmark/checkpoints-light \
   --prepare-only
 ```
 
@@ -153,7 +159,9 @@ Starting Uvicorn without `BENCHMARK_MANIFEST` retains the normal full-dataset
 indexing behavior.
 
 The benchmark driver runs on the same Colab VM, so the simplest and recommended
-configuration uses its loopback address rather than Ngrok:
+configuration uses its loopback address rather than Ngrok. Only the `clip` and
+`aesthetic` entries are used in this phase; the other configured workers are
+not contacted:
 
 ```yaml
 retrieval_methods:
@@ -226,6 +234,10 @@ Checkpoints are saved locally under
   immediately after each scene finishes.
 - `latest.zip` is the automatic resume source.
 - `final.zip` includes `summary.json` and `per_scene.csv` after evaluation.
+
+Keep `final.zip`. It is the handoff artifact for the later Vast.ai VLM and
+ImageEdit phase: it preserves the exact manifest, Gemini judgments, and the
+completed CLIP/Aesthetic rankings.
 
 If the command or Colab VM stops, prepare a new session if necessary and rerun
 the exact same command. The driver uploads `latest.zip`, restores it into the
