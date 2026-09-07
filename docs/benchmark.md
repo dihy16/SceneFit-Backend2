@@ -54,6 +54,11 @@ The helper restores `latest.zip` on a fresh runtime, saves
 count, seed, judge model, batch size, or method list differs from the current
 command.
 
+To use a separate vision-capable local agent as the ground-truth judge instead
+of Gemini, follow [the external local VLM judge prompt](local_vlm_judge_prompt.md).
+It produces a compatible `latest.zip`; restore it with `prepare`, skip `judge`,
+then run the normal CLIP/Aesthetic retrieval stage.
+
 ## Commands
 
 First, run the offline smoke test. It uses two scenes, five outfits, a deterministic fixture judge, and synthetic rankings, so it requires no GPU, API key, or worker:
