@@ -105,6 +105,15 @@ class GeminiJudge:
         scene_path: Path,
         outfits: Sequence[tuple[str, Path]],
     ) -> list[dict[str, Any]]:
+        return self._score_batch(scene_path, outfits, allow_repair=True)
+
+    def _score_batch(
+        self,
+        scene_path: Path,
+        outfits: Sequence[tuple[str, Path]],
+        *,
+        allow_repair: bool,
+    ) -> list[dict[str, Any]]:
         last_error: Exception | None = None
         for attempt in range(self.max_attempts):
             try:
@@ -135,21 +144,39 @@ class GeminiJudge:
                 results = [item.model_dump() for item in parsed.judgments]
                 expected_ids = [outfit_id for outfit_id, _ in outfits]
                 returned_ids = [str(item["outfit_id"]) for item in results]
-                if set(returned_ids) != set(expected_ids):
-                    raise ValueError(
-                        "Judge returned a malformed outfit ID set: "
-                        f"expected {expected_ids}, got {returned_ids}"
-                    )
                 if len(returned_ids) != len(expected_ids):
                     print(
-                        "[GEMINI] Response contained duplicate rows but all "
-                        "requested outfit IDs were present; keeping the first "
-                        "judgment for each outfit",
+                        "[GEMINI] Response row count differs from the request; "
+                        "normalizing valid rows",
                         flush=True,
                     )
                 first_by_id: dict[str, dict[str, Any]] = {}
                 for result in results:
-                    first_by_id.setdefault(str(result["outfit_id"]), result)
+                    outfit_id = str(result["outfit_id"])
+                    if outfit_id in expected_ids:
+                        first_by_id.setdefault(outfit_id, result)
+                missing_ids = [
+                    outfit_id for outfit_id in expected_ids if outfit_id not in first_by_id
+                ]
+                if missing_ids and not allow_repair:
+                    raise ValueError(
+                        "Judge omitted requested outfit IDs: "
+                        f"{missing_ids}; returned {returned_ids}"
+                    )
+                if missing_ids:
+                    print(
+                        f"[GEMINI] Repairing {len(missing_ids)} omitted outfit(s) "
+                        "with individual requests",
+                        flush=True,
+                    )
+                    outfit_paths = dict(outfits)
+                    for outfit_id in missing_ids:
+                        repaired = self._score_batch(
+                            scene_path,
+                            [(outfit_id, outfit_paths[outfit_id])],
+                            allow_repair=False,
+                        )
+                        first_by_id[outfit_id] = repaired[0]
                 return [first_by_id[outfit_id] for outfit_id in expected_ids]
             except Exception as exc:
                 last_error = exc
