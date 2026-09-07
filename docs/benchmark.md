@@ -1,6 +1,6 @@
 # Gemini Retrieval Benchmark
 
-This benchmark treats each scene as a retrieval query and uses one shared outfit candidate pool. Gemini 3.7 Flash assigns a graded relevance score from 1 (unsuitable) to 5 (excellent) to every scene–outfit pair. Retrieval workers then rank the exact same candidates; the evaluator reports nDCG@5/10 and mean relevance@5/10.
+This benchmark treats each scene as a retrieval query and uses one shared outfit candidate pool. Gemini 3.6 Flash assigns a graded relevance score from 1 (unsuitable) to 5 (excellent) to every scene–outfit pair. Retrieval workers then rank the exact same candidates; the evaluator reports nDCG@5/10 and mean relevance@5/10.
 
 ## Setup
 
@@ -49,7 +49,7 @@ The output contains the data manifest and hashes, append-only `judgments.jsonl`,
 
 ## Running with a Google Colab GPU
 
-Gemini 3.7 Flash runs in Google's API and does not use the Colab GPU. For the
+Gemini 3.6 Flash runs in Google's API and does not use the Colab GPU. For the
 current light phase, a T4 runs only the CLIP and Aesthetic retrieval workers.
 The VLM/SaMaG-R and ImageEdit methods can be run later on a separate GPU
 machine using the saved benchmark artifacts.

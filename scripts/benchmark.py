@@ -91,7 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     judge_parser = subparsers.add_parser("judge", help="create or resume Gemini relevance judgments")
     judge_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
     judge_parser.add_argument("--output", type=_path, default=DEFAULT_RUN_DIR / "judgments.jsonl")
-    judge_parser.add_argument("--model", default="gemini-3.7-flash")
+    judge_parser.add_argument("--model", default="gemini-3.6-flash")
     judge_parser.add_argument("--batch-size", type=int, default=10)
     judge_parser.add_argument("--max-attempts", type=int, default=3)
 
@@ -110,7 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     scene_parser.add_argument("--rankings-dir", type=_path, default=DEFAULT_RUN_DIR / "rankings")
     scene_parser.add_argument("--config", type=_path, default=REPO_ROOT / "config" / "retrieval_methods.yaml")
     scene_parser.add_argument("--methods", nargs="+", default=None)
-    scene_parser.add_argument("--model", default="gemini-3.7-flash")
+    scene_parser.add_argument("--model", default="gemini-3.6-flash")
     scene_parser.add_argument("--batch-size", type=int, default=10)
     scene_parser.add_argument("--max-attempts", type=int, default=3)
 
@@ -131,7 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="run manifest, judge, collect, and evaluate")
     _add_manifest_inputs(run_parser)
     run_parser.add_argument("--run-dir", type=_path, default=DEFAULT_RUN_DIR)
-    run_parser.add_argument("--model", default="gemini-3.7-flash")
+    run_parser.add_argument("--model", default="gemini-3.6-flash")
     run_parser.add_argument("--batch-size", type=int, default=10)
     run_parser.add_argument("--max-attempts", type=int, default=3)
     run_parser.add_argument("--config", type=_path, default=REPO_ROOT / "config" / "retrieval_methods.yaml")

@@ -112,7 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--num-scenes", type=int, default=10)
     parser.add_argument("--num-outfits", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--model", default="gemini-3.7-flash")
+    parser.add_argument("--model", default="gemini-3.6-flash")
     parser.add_argument("--batch-size", type=int, default=10)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--methods", nargs="+", default=None)

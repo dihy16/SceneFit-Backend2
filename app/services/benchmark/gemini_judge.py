@@ -45,7 +45,7 @@ class GeminiJudge:
     def __init__(
         self,
         api_key: str | None = None,
-        model_name: str = "gemini-3.7-flash",
+        model_name: str = "gemini-3.6-flash",
         max_attempts: int = 3,
         base_delay: float = 2.0,
         client: Any | None = None,
