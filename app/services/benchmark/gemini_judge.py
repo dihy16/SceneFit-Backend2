@@ -132,7 +132,19 @@ class GeminiJudge:
                     parsed = JudgmentBatch.model_validate_json(response.text)
                 if isinstance(parsed, dict):
                     parsed = JudgmentBatch.model_validate(parsed)
-                return [item.model_dump() for item in parsed.judgments]
+                results = [item.model_dump() for item in parsed.judgments]
+                expected_ids = [outfit_id for outfit_id, _ in outfits]
+                returned_ids = [str(item["outfit_id"]) for item in results]
+                if (
+                    len(returned_ids) != len(expected_ids)
+                    or len(returned_ids) != len(set(returned_ids))
+                    or set(returned_ids) != set(expected_ids)
+                ):
+                    raise ValueError(
+                        "Judge returned a malformed outfit ID set: "
+                        f"expected {expected_ids}, got {returned_ids}"
+                    )
+                return results
             except Exception as exc:
                 last_error = exc
                 print(

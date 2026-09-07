@@ -75,6 +75,33 @@ class FakeClient:
         self.models = FakeModels()
 
 
+class FakeMalformedModels:
+    def __init__(self):
+        self.calls = 0
+
+    def generate_content(self, **kwargs):
+        self.calls += 1
+        response = type("Response", (), {})()
+        if self.calls == 1:
+            judgments = [
+                OutfitJudgment(outfit_id="o1", score=5, reason="first"),
+                OutfitJudgment(outfit_id="o1", score=4, reason="duplicate"),
+            ]
+        else:
+            judgments = [
+                OutfitJudgment(outfit_id="o1", score=5, reason="first"),
+                OutfitJudgment(outfit_id="o2", score=4, reason="second"),
+            ]
+        response.parsed = JudgmentBatch(judgments=judgments)
+        response.text = ""
+        return response
+
+
+class FakeMalformedClient:
+    def __init__(self):
+        self.models = FakeMalformedModels()
+
+
 class FakeResponse:
     def __init__(self, payload):
         self.payload = payload
@@ -277,6 +304,19 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(result[0]["score"], 5)
         self.assertEqual(client.models.calls, 2)
         self.assertEqual(client.models.last_request["model"], DEFAULT_JUDGE_MODEL)
+
+    def test_gemini_retries_malformed_outfit_ids(self):
+        client = FakeMalformedClient()
+        judge = GeminiJudge(client=client, base_delay=0, sleep=lambda _: None)
+        result = judge.score_batch(
+            self.scenes / "scene_0.png",
+            [
+                ("o1", self.outfits / "outfit_0.png"),
+                ("o2", self.outfits / "outfit_1.png"),
+            ],
+        )
+        self.assertEqual([item["outfit_id"] for item in result], ["o1", "o2"])
+        self.assertEqual(client.models.calls, 2)
 
     def test_cli_defaults_and_separate_stages(self):
         benchmark_parser = build_benchmark_parser()
