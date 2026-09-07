@@ -1,9 +1,10 @@
 # External Local VLM Judge Prompt
 
-Copy the prompt below to a vision-capable local agent. Give that agent this
-repository, the extracted benchmark dataset, and the exact prepared manifest.
-The agent must create a compatible `latest.zip` so that the Colab workflow can
-run CLIP and Aesthetic retrieval without calling Gemini.
+Copy the prompt below to a vision-capable local agent. The repository already
+contains the image data and the authoritative root-level `manifest.json`; the
+agent needs no additional benchmark instructions. It must create a compatible
+`latest.zip` so that the Colab workflow can run CLIP and Aesthetic retrieval
+without calling Gemini.
 
 ## Prompt to give the local agent
 
@@ -15,9 +16,20 @@ inspect any retrieval rankings.
 
 Inputs you must use exactly:
 
-1. The repository root contains extracted image data under data/bg and data/2d.
-2. The exact candidate set is in results/benchmark/latest/manifest.json.
-3. Do not regenerate, edit, reorder, or resample the manifest.
+1. The authoritative candidate set is the file manifest.json in the repository
+   root. Do not regenerate, edit, reorder, or resample it.
+2. Scene images are at data/bg/<the filename from each scene's manifest path>.
+   For example, data/bg/CamView_Capture_02.png.
+3. Outfit images are at data/drive_data/data/2d/<the filename from each
+   outfit's manifest path>. For example,
+   data/drive_data/data/2d/avatars_0a79051309004739abb9df765de3c033.png.
+   The manifest retains its original data/2d/... paths; use the mapping above
+   only to locate the local image files. Do not change the paths in the copied
+   manifest.
+
+Before scoring, verify that manifest.json, data/bg, and data/drive_data/data/2d
+exist. The manifest lists 10 scenes and 100 outfits, and it is the only source
+of truth for IDs, ordering, filenames, and SHA-256 hashes.
 
 Score every pair in the manifest: 10 scenes x 100 outfits = exactly 1,000
 scores. You must visually inspect the scene and outfit image for each pair.
@@ -41,7 +53,7 @@ Use temporary short aliases such as O01 through O100 internally if that makes
 the visual review safer, but map each score back to the exact outfit ID in the
 manifest. Do not use the aliases in the final artifacts.
 
-Create results/benchmark/external-judge and copy the supplied manifest there
+Create results/benchmark/external-judge and copy the root manifest.json there
 unchanged. Write progress incrementally so the task can resume. The final
 results/benchmark/external-judge/judgments.jsonl must contain exactly 1,000
 non-empty JSON lines: one unique (scene_id, outfit_id) pair for every manifest
