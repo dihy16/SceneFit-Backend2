@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 from datetime import datetime, timezone
 from pathlib import Path
@@ -196,9 +197,18 @@ def run_judging(
     if unknown_scene_ids:
         raise ValueError(f"Unknown scene IDs: {sorted(unknown_scene_ids)}")
     written = 0
+    selected_pair_count = len(selected_scene_ids) * len(manifest["outfits"])
+    completed_selected = sum(
+        1 for scene_id, _ in completed if scene_id in selected_scene_ids
+    )
+    print(
+        f"[JUDGE] Starting {judge.model_name}: "
+        f"{completed_selected}/{selected_pair_count} selected pairs cached",
+        flush=True,
+    )
 
     with output_path.open("a", encoding="utf-8", buffering=1) as stream:
-        for scene in manifest["scenes"]:
+        for scene_index, scene in enumerate(manifest["scenes"], 1):
             if scene["id"] not in selected_scene_ids:
                 continue
             pending = [
@@ -206,10 +216,29 @@ def run_judging(
                 for outfit in manifest["outfits"]
                 if (scene["id"], outfit["id"]) not in completed
             ]
+            if not pending:
+                print(
+                    f"[JUDGE] Scene {scene_index}/{len(manifest['scenes'])} "
+                    f"{scene['id']}: all {len(manifest['outfits'])} judgments cached",
+                    flush=True,
+                )
+                continue
+            batch_count = math.ceil(len(pending) / batch_size)
+            print(
+                f"[JUDGE] Scene {scene_index}/{len(manifest['scenes'])} "
+                f"{scene['id']}: {len(pending)} pairs pending in {batch_count} batches",
+                flush=True,
+            )
             random.Random(f"{manifest['seed']}:{scene['id']}").shuffle(pending)
             for offset in range(0, len(pending), batch_size):
                 batch = pending[offset : offset + batch_size]
                 requested = [(item["id"], root / item["path"]) for item in batch]
+                batch_index = offset // batch_size + 1
+                print(
+                    f"[JUDGE] Scene {scene['id']}: sending batch "
+                    f"{batch_index}/{batch_count} ({len(batch)} outfits)",
+                    flush=True,
+                )
                 results = judge.score_batch(root / scene["path"], requested)
                 returned_ids = [str(item.get("outfit_id")) for item in results]
                 expected_ids = [item[0] for item in requested]
@@ -236,4 +265,10 @@ def run_judging(
                     }
                     stream.write(json.dumps(row, ensure_ascii=False) + "\n")
                     written += 1
+                print(
+                    f"[JUDGE] Scene {scene['id']}: saved batch "
+                    f"{batch_index}/{batch_count}; {written} new judgments this run",
+                    flush=True,
+                )
+    print(f"[JUDGE] Complete: wrote {written} new judgments", flush=True)
     return written

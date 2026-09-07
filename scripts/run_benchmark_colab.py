@@ -11,6 +11,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import threading
 import zipfile
 from pathlib import Path
 
@@ -46,11 +47,24 @@ def _remote_exec(session: str, code: str, timeout: int) -> None:
         "else:\n"
         "    status_path.write_text(json.dumps({'ok': True}), encoding='utf-8')\n"
     )
-    _run_colab(
-        ["exec", "-s", session, "--timeout", str(timeout)],
-        code=wrapped_code,
-        timeout=timeout + 60,
-    )
+    finished = threading.Event()
+
+    def report_heartbeat() -> None:
+        while not finished.wait(30):
+            print("[benchmark] Remote Colab command is still running...", flush=True)
+
+    print("[benchmark] Starting remote Colab command...", flush=True)
+    heartbeat = threading.Thread(target=report_heartbeat, daemon=True)
+    heartbeat.start()
+    try:
+        _run_colab(
+            ["exec", "-s", session, "--timeout", str(timeout)],
+            code=wrapped_code,
+            timeout=timeout + 60,
+        )
+    finally:
+        finished.set()
+        heartbeat.join()
     with tempfile.TemporaryDirectory() as directory:
         status_file = Path(directory) / "remote-status.json"
         _run_colab(["download", "-s", session, str(REMOTE_STATUS), str(status_file)])
@@ -62,7 +76,14 @@ def _remote_exec(session: str, code: str, timeout: int) -> None:
 def _remote_command(session: str, command: list[str], timeout: int) -> None:
     code = (
         "import subprocess\n"
-        f"subprocess.run({json.dumps(command)}, cwd={str(REMOTE_ROOT)!r}, check=True)\n"
+        f"result = subprocess.run({json.dumps(command)}, cwd={str(REMOTE_ROOT)!r}, "
+        "text=True, capture_output=True)\n"
+        "print(result.stdout, end='')\n"
+        "if result.returncode:\n"
+        "    raise RuntimeError(\n"
+        "        'Remote process failed with exit code ' + str(result.returncode) + "
+        "        ':\\n' + result.stdout + result.stderr\n"
+        "    )\n"
     )
     _remote_exec(session, code, timeout)
 
@@ -119,6 +140,7 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if latest_archive.exists():
+        print(f"[benchmark] Restoring checkpoint: {latest_archive}", flush=True)
         remote_resume = REMOTE_ROOT / "benchmark-resume.zip"
         _run_colab(["upload", "-s", args.session, str(latest_archive), str(remote_resume)])
         _remote_exec(
@@ -161,18 +183,24 @@ def main() -> int:
         f"assert manifest['seed'] == {args.seed}, 'Existing manifest has a different seed'\n",
         300,
     )
-
-    _remote_command(
-        args.session,
-        [
-            "python",
-            "-m",
-            "scripts.build_pe_index",
-            "--manifest",
-            str(REMOTE_RUN_DIR / "manifest.json"),
-        ],
-        args.timeout,
+    print(
+        f"[benchmark] Manifest ready: {args.num_scenes} scenes, "
+        f"{args.num_outfits} outfits",
+        flush=True,
     )
+
+    if args.methods is None or "vlm" in args.methods:
+        _remote_command(
+            args.session,
+            [
+                "python",
+                "-m",
+                "scripts.build_pe_index",
+                "--manifest",
+                str(REMOTE_RUN_DIR / "manifest.json"),
+            ],
+            args.timeout,
+        )
 
     checkpoint = _checkpoint_state(latest_archive)
     expected_configuration = {
@@ -200,6 +228,11 @@ def main() -> int:
         if scene_index in completed:
             print(f"Checkpoint already contains scene {scene_index + 1}; skipping")
             continue
+        print(
+            f"[benchmark] Running scene {scene_index + 1}/{args.num_scenes} "
+            f"with methods: {', '.join(args.methods or ['all configured'])}",
+            flush=True,
+        )
         command = [
             "python",
             "scripts/benchmark.py",
@@ -223,7 +256,13 @@ def main() -> int:
             "from pathlib import Path\n"
             "import json, shutil, subprocess\n"
             f"command = {json.dumps(command)}\n"
-            f"subprocess.run(command, cwd={str(REMOTE_ROOT)!r}, check=True)\n"
+            f"result = subprocess.run(command, cwd={str(REMOTE_ROOT)!r}, text=True, capture_output=True)\n"
+            "print(result.stdout, end='')\n"
+            "if result.returncode:\n"
+            "    raise RuntimeError(\n"
+            "        'Benchmark scene failed with exit code ' + str(result.returncode) + "
+            "        ':\\n' + result.stdout + result.stderr\n"
+            "    )\n"
             f"run_dir = Path({str(REMOTE_RUN_DIR)!r})\n"
             f"state = {json.dumps(state)}\n"
             "(run_dir / 'checkpoint.json').write_text(json.dumps(state, indent=2) + '\\n', encoding='utf-8')\n"

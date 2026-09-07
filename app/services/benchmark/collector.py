@@ -97,17 +97,32 @@ def collect_rankings(
         if cached and cached.get("manifest_fingerprint") != fingerprint:
             raise ValueError(f"Cached ranking does not match the current manifest: {output_path}")
         scenes = cached.get("scenes", {})
+        print(
+            f"[COLLECT] {method}: {len(scenes)}/{len(manifest['scenes'])} scenes cached",
+            flush=True,
+        )
 
-        for scene in manifest["scenes"]:
+        for scene_index, scene in enumerate(manifest["scenes"], 1):
             if scene["id"] not in selected_scene_ids:
                 continue
             if scene["id"] in scenes:
                 normalize_ranking(scenes[scene["id"]], expected_ids)
+                print(
+                    f"[COLLECT] {method} scene {scene_index}/{len(manifest['scenes'])} "
+                    f"{scene['id']}: cached",
+                    flush=True,
+                )
                 continue
             last_error: Exception | None = None
             for attempt in range(int(retry["max_attempts"])):
                 try:
                     scene_path = root / scene["path"]
+                    print(
+                        f"[COLLECT] {method} scene {scene_index}/{len(manifest['scenes'])} "
+                        f"{scene['id']}: request {attempt + 1}/{retry['max_attempts']} "
+                        f"for {len(expected_ids)} outfits",
+                        flush=True,
+                    )
                     with scene_path.open("rb") as image_stream:
                         response = request(
                             url,
@@ -130,9 +145,19 @@ def collect_rankings(
                             "scenes": scenes,
                         },
                     )
+                    print(
+                        f"[COLLECT] {method} scene {scene_index}/{len(manifest['scenes'])} "
+                        f"{scene['id']}: saved {len(scenes[scene['id']])} ranked outfits",
+                        flush=True,
+                    )
                     break
                 except Exception as exc:
                     last_error = exc
+                    print(
+                        f"[COLLECT] {method} scene {scene['id']}: "
+                        f"attempt {attempt + 1} failed: {type(exc).__name__}: {exc}",
+                        flush=True,
+                    )
                     if attempt + 1 < int(retry["max_attempts"]):
                         time.sleep(float(retry["delay_seconds"]) * (2**attempt))
             else:

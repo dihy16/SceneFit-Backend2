@@ -132,6 +132,13 @@ class GeminiJudge:
                 return [item.model_dump() for item in parsed.judgments]
             except Exception as exc:
                 last_error = exc
+                print(
+                    f"[GEMINI] Attempt {attempt + 1}/{self.max_attempts} failed: "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
                 if attempt + 1 < self.max_attempts:
-                    self.sleep(self.base_delay * (2**attempt))
+                    delay = self.base_delay * (2**attempt)
+                    print(f"[GEMINI] Retrying in {delay:.1f}s", flush=True)
+                    self.sleep(delay)
         raise RuntimeError(f"Gemini judging failed after {self.max_attempts} attempts") from last_error

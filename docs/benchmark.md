@@ -72,7 +72,7 @@ From the repository directory in WSL, create an A100 session and prepare it:
 
 ```bash
 SESSION_NAME=scenefit-benchmark
-colab new -s "$SESSION_NAME" --gpu A100
+colab new -s "$SESSION_NAME" --gpu T4
 colab drivemount -s "$SESSION_NAME"
 colab exec -s "$SESSION_NAME" --timeout 3600 -f setup_colab.py
 colab upload -s "$SESSION_NAME" .env /content/.env
@@ -204,16 +204,23 @@ python scripts/run_benchmark_colab.py \
   --session "$SESSION_NAME" \
   --num-scenes 10 \
   --num-outfits 100 \
-  --methods clip aesthetic vlm image_edit \
-  --output-dir results/benchmark/colab-checkpoints-datazip-all
+  --methods clip aesthetic \
+  --output-dir results/benchmark/checkpoints-light
 ```
 
-This evaluates all four configured methods. Each worker must support the
+This evaluates CLIP and Aesthetic only. Each worker must support the
 multipart `candidate_names` form field and return all 100 requested outfits
 exactly once.
 
+The local driver prints a heartbeat every 30 seconds while Colab is executing
+a remote command. The remote benchmark logs `[COLLECT]` messages for worker
+requests and cache hits, `[JUDGE]` messages for each Gemini batch, and
+`[GEMINI]` messages when an API attempt fails and will be retried. Colab CLI
+may buffer remote output until the command finishes, so the local heartbeat is
+the indication that the remote command is still active.
+
 Checkpoints are saved locally under
-`results/benchmark/colab-checkpoints-datazip-all/`:
+`results/benchmark/checkpoints-light/`:
 
 - `scene-001.zip`, `scene-002.zip`, etc. are cumulative snapshots downloaded
   immediately after each scene finishes.
