@@ -236,3 +236,81 @@ colab stop -s "$SESSION_NAME"
 ```
 
 Do not use `run_colab.sh` for this foreground benchmark workflow: that script starts the FastAPI server and occupies the terminal. Use it separately when provisioning a retrieval worker, then run the benchmark from another terminal or session.
+
+## Split T4 and Vast.ai Run
+
+Use one manifest across both phases. The T4 phase runs CLIP and Aesthetic and
+creates all Gemini judgments. The Vast.ai phase restores that archive and runs
+VLM for every scene before loading ImageEdit/FLUX for every scene.
+
+For the T4 phase, create the session with `--gpu T4`, complete the dataset and
+background setup above, and prepare without building the VLM index:
+
+```bash
+python scripts/run_benchmark_colab.py \
+  --session "$SESSION_NAME" \
+  --num-scenes 10 \
+  --num-outfits 100 \
+  --methods clip aesthetic \
+  --output-dir results/benchmark/checkpoints-light \
+  --prepare-only
+```
+
+Start Uvicorn as documented above, then run from local WSL:
+
+```bash
+python scripts/run_benchmark_colab.py \
+  --session "$SESSION_NAME" \
+  --num-scenes 10 \
+  --num-outfits 100 \
+  --methods clip aesthetic \
+  --output-dir results/benchmark/checkpoints-light
+```
+
+Wait for `results/benchmark/checkpoints-light/final.zip` before stopping the
+T4. This archive contains the shared manifest, all 1,000 Gemini judgments, and
+the two light-method rankings.
+
+On a Vast.ai instance with the repository and dependencies installed, place
+the following files under the repository or another known directory:
+
+- The full `data.zip`, extracted at the repository root.
+- The four `CamView_*.png` files in `data/bg/`.
+- `.env` and `data/ref_images/man.png` plus `woman.png`.
+- The T4 `final.zip`, for example `/workspace/light-final.zip`.
+
+Restore and validate the handoff and build the 100-outfit PE-CLIP index:
+
+```bash
+cd /workspace/SceneFit-Backend2
+python scripts/run_benchmark_phase.py \
+  --resume-archive /workspace/light-final.zip \
+  --methods vlm image_edit \
+  --output-dir results/benchmark/checkpoints-heavy \
+  --prepare-only
+```
+
+Start Uvicorn in one Vast.ai shell and keep it open:
+
+```bash
+cd /workspace/SceneFit-Backend2
+BENCHMARK_MANIFEST=results/benchmark/latest/manifest.json \
+  python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Run the heavy phase in a second shell:
+
+```bash
+cd /workspace/SceneFit-Backend2
+python scripts/run_benchmark_phase.py \
+  --methods vlm image_edit \
+  --output-dir results/benchmark/checkpoints-heavy
+```
+
+The runner uses method-major order and writes a cumulative ZIP after every
+worker/scene pair. Before loading FLUX, it precomputes and caches the ten
+ImageEdit outfit descriptions with the VLM; FLUX can then stay loaded without
+coexisting with Qwen. Rerun the same command to resume. The final archive contains
+all four rankings, shared judgments, `summary.json`, and `per_scene.csv` at
+`results/benchmark/checkpoints-heavy/final.zip`. Download it before destroying
+the Vast.ai instance.

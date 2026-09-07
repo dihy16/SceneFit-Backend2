@@ -11,10 +11,16 @@ from pathlib import Path
 import yaml
 
 from app.services.benchmark.collector import collect_rankings, normalize_ranking
-from app.services.benchmark.core import create_manifest, run_judging, write_json
+from app.services.benchmark.core import (
+    create_manifest,
+    manifest_fingerprint,
+    run_judging,
+    write_json,
+)
 from app.services.benchmark.gemini_judge import GeminiJudge, JudgmentBatch, OutfitJudgment
 from app.services.benchmark.metrics import evaluate_benchmark, ndcg
 from scripts.build_pe_index import _image_paths
+from scripts.run_benchmark_phase import _verify_complete_judgments
 
 
 class FakeJudge:
@@ -106,6 +112,31 @@ class BenchmarkTests(unittest.TestCase):
 
         self.assertEqual([path.resolve() for path in selected], expected)
 
+    def test_heavy_phase_requires_complete_shared_judgments(self):
+        manifest = self.manifest()
+        judgments = self.root / "judgments.jsonl"
+        rows = [
+            {
+                "scene_id": scene["id"],
+                "outfit_id": outfit["id"],
+                "score": 3,
+            }
+            for scene in manifest["scenes"]
+            for outfit in manifest["outfits"]
+        ]
+        judgments.write_text(
+            "".join(json.dumps(row) + "\n" for row in rows),
+            encoding="utf-8",
+        )
+        _verify_complete_judgments(manifest, judgments)
+
+        judgments.write_text(
+            "".join(json.dumps(row) + "\n" for row in rows[:-1]),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "missing=1"):
+            _verify_complete_judgments(manifest, judgments)
+
     def test_judging_is_incremental_and_resumable(self):
         manifest = self.manifest()
         output = self.root / "judgments.jsonl"
@@ -176,6 +207,51 @@ class BenchmarkTests(unittest.TestCase):
         collect_rankings(manifest, self.root, config, output, request=request)
         self.assertEqual(len(calls), 2)  # one request per scene; second run is cached
         self.assertEqual(json.loads(calls[0][1]["candidate_names"]), expected)
+
+    def test_image_edit_collection_uses_precomputed_scene_prompt(self):
+        manifest = self.manifest()
+        config = self.root / "workers.yaml"
+        config.write_text(
+            "retrieval_methods:\n  image_edit:\n    url: http://127.0.0.1:8000\n"
+            "    endpoint: api/v1/workers/image-edit-flux\n"
+            "retry:\n  max_attempts: 1\n  delay_seconds: 0\n",
+            encoding="utf-8",
+        )
+        run_dir = self.root / "run"
+        rankings_dir = run_dir / "rankings"
+        run_dir.mkdir()
+        scene_id = manifest["scenes"][0]["id"]
+        write_json(
+            run_dir / "image_edit_prompts.json",
+            {
+                "version": 1,
+                "manifest_fingerprint": manifest_fingerprint(manifest),
+                "scenes": {scene_id: "A lightweight linen outfit"},
+            },
+        )
+        expected = [item["id"] for item in manifest["outfits"]]
+        requests = []
+
+        def request(url, **kwargs):
+            requests.append(kwargs["data"])
+            return FakeResponse(
+                [{"name": item_id, "score": 1.0} for item_id in expected]
+            )
+
+        collect_rankings(
+            manifest,
+            self.root,
+            config,
+            rankings_dir,
+            methods=["image_edit"],
+            request=request,
+            scene_ids=[scene_id],
+        )
+
+        self.assertEqual(
+            requests[0]["outfit_description"],
+            "A lightweight linen outfit",
+        )
 
     def test_live_worker_config_does_not_target_proxy_routes(self):
         config_path = Path(__file__).parents[1] / "config" / "retrieval_methods.yaml"

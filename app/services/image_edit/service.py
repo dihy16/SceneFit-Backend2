@@ -31,7 +31,8 @@ REF_IMAGE_PATH_WOMAN = Path('data/ref_images/woman.png')
 
 API_KEY = os.getenv("IMAGEROUTER_API_KEY")
 URL = "https://api.imagerouter.io/v1/openai/images/edits"
-VLM_BASE_URL = os.getenv("VLM_BASE_URL", "https://nondepressed-semipneumatically-eveline.ngrok-free.dev")
+VLM_BASE_URL = os.getenv("VLM_BASE_URL", "http://127.0.0.1:8000")
+VLM_ENDPOINT = os.getenv("VLM_ENDPOINT", "api/v1/workers/vlm-suggest-outfit")
 VLM_VERIFY_SSL = os.getenv("VLM_VERIFY_SSL", "true").lower() != "false"
 VECTOR_DB_BASE_URL = os.getenv("VECTOR_DB_BASE_URL", "https://nondepressed-semipneumatically-eveline.ngrok-free.dev")
 
@@ -173,7 +174,7 @@ def get_outfit_suggestion_remote(
     verify_ssl: bool | None = None,
 ) -> str:
     bg_path = Path(bg_path) if isinstance(bg_path, str) else bg_path
-    url = f"{VLM_BASE_URL}/api/v1/retrieval/vlm-suggest-outfit"
+    url = f"{VLM_BASE_URL.rstrip('/')}/{VLM_ENDPOINT.lstrip('/')}"
     mime_type, _ = mimetypes.guess_type(bg_path)
     mime_type = mime_type or "image/png"
     verify = VLM_VERIFY_SSL if verify_ssl is None else verify_ssl

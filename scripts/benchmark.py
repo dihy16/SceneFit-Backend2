@@ -113,6 +113,11 @@ def build_parser() -> argparse.ArgumentParser:
     scene_parser.add_argument("--model", default="gemini-3.7-flash")
     scene_parser.add_argument("--batch-size", type=int, default=10)
     scene_parser.add_argument("--max-attempts", type=int, default=3)
+    scene_parser.add_argument(
+        "--skip-judge",
+        action="store_true",
+        help="collect rankings without creating judgments (for a later benchmark phase)",
+    )
 
     evaluate_parser = subparsers.add_parser("evaluate", help="evaluate cached rankings")
     evaluate_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
@@ -174,15 +179,17 @@ def main() -> int:
             args.methods,
             scene_ids=[scene_id],
         )
-        judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
-        count = run_judging(
-            manifest,
-            REPO_ROOT,
-            args.judgments,
-            judge,
-            args.batch_size,
-            scene_ids=[scene_id],
-        )
+        count = 0
+        if not args.skip_judge:
+            judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            count = run_judging(
+                manifest,
+                REPO_ROOT,
+                args.judgments,
+                judge,
+                args.batch_size,
+                scene_ids=[scene_id],
+            )
         print(
             f"Scene {args.scene_index + 1}/{len(manifest['scenes'])} complete: "
             f"{scene_id} ({count} new judgments)"

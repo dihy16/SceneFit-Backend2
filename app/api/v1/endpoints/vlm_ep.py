@@ -307,8 +307,14 @@ def suggest_outfit(
     bg_path = _save_bg_upload(bg_image)
 
     vlm = ModelRegistry.get("vlm")
-
-    outfit_desc = vlm.suggest_outfit_from_bg(str(bg_path), preference_text=preference_text, feedback_text=feedback_text)
+    try:
+        outfit_desc = vlm.suggest_outfit_from_bg(
+            str(bg_path),
+            preference_text=preference_text,
+            feedback_text=feedback_text,
+        )
+    finally:
+        ModelRegistry.release("vlm")
     print(f"[vlm_ep] Outfit suggestion: {outfit_desc}")
 
     return {

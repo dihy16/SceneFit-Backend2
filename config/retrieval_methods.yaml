@@ -10,6 +10,7 @@ retrieval_methods:
   image_edit:
     url: "http://127.0.0.1:8000"
     endpoint: "api/v1/workers/image-edit-flux"
+    suggestion_endpoint: "api/v1/workers/vlm-suggest-outfit"
     description: "Image edit model retrieval"
   
   vlm:
