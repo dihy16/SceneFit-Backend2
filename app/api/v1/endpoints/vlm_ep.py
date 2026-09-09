@@ -305,13 +305,20 @@ def suggest_outfit(
     feedback_text: str | None = Form(None)
 ):
     bg_path = _save_bg_upload(bg_image)
+    try:
+        vlm = ModelRegistry.get("vlm")
+        outfit_desc = vlm.suggest_outfit_from_bg(
+            str(bg_path),
+            preference_text=preference_text,
+            feedback_text=feedback_text,
+        )
+        print(f"[vlm_ep] Outfit suggestion: {outfit_desc}")
 
-    vlm = ModelRegistry.get("vlm")
-
-    outfit_desc = vlm.suggest_outfit_from_bg(str(bg_path), preference_text=preference_text, feedback_text=feedback_text)
-    print(f"[vlm_ep] Outfit suggestion: {outfit_desc}")
-
-    return {
-        "bg_image": bg_image.filename,
-        "outfit_description": outfit_desc,
-    }
+        return {
+            "bg_image": bg_image.filename,
+            "outfit_description": outfit_desc,
+        }
+    finally:
+        # Flux calls this endpoint to obtain a text prompt.  Do not retain the
+        # Qwen VLM while the much larger Flux pipeline is subsequently loaded.
+        ModelRegistry.release("vlm")

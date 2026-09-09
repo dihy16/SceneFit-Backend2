@@ -140,6 +140,10 @@ def retrieve_clothes_image_edit_flux(
     # -------------------------------------------------
     # 2. Get outfit suggestion from remote VLM service
     # -------------------------------------------------
+    # A previous image-edit request may have left Flux cached on this GPU.
+    # Release it before asking the VLM for a description so the two large
+    # models are never resident together on a single-GPU worker.
+    ModelRegistry.release("image_edit_flux")
     pref_text = preference_text or convert_speech_to_text(preference_audio) if preference_audio else ""
     print(f"[image_edit_ep] Preference text: {pref_text}")
     
@@ -206,6 +210,9 @@ def apply_feedback_image_edit_flux(
     # -------------------------------------------------
     # 2. Get outfit suggestion from remote VLM service
     # -------------------------------------------------
+    # See retrieve_clothes_image_edit_flux: free Flux before the VLM request
+    # when both workers share one GPU.
+    ModelRegistry.release("image_edit_flux")
     outfit_desc = get_outfit_suggestion_remote(
         session["bg_path"],
         preference_text=session.get("preference_text", ""),
