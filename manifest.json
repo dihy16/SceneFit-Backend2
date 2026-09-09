@@ -1,0 +1,561 @@
+{
+  "version": 1,
+  "created_at": "2026-09-07T16:38:41.544310+00:00",
+  "seed": 42,
+  "num_scenes": 10,
+  "num_outfits": 100,
+  "scenes": [
+    {
+      "id": "CamView_Capture_02",
+      "path": "data/bg/CamView_Capture_02.png",
+      "sha256": "917a8ba73d00721c31e8638a1ac864410fafe7dca10774adae58511eeeae316d"
+    },
+    {
+      "id": "CamView_01_Default",
+      "path": "data/bg/CamView_01_Default.png",
+      "sha256": "976c64bd69964cf74cd995de273ea009595b25c561b5f3d6897cf4516d0b7025"
+    },
+    {
+      "id": "Screenshot 2026-01-02 at 20.36.17",
+      "path": "data/bg/Screenshot 2026-01-02 at 20.36.17.png",
+      "sha256": "e9e7efbc6cae84500334c707a4bfd867427b41ea01bd8aa8fa4f26b28c757d44"
+    },
+    {
+      "id": "Screenshot 2026-01-04 at 11.53.25",
+      "path": "data/bg/Screenshot 2026-01-04 at 11.53.25.png",
+      "sha256": "f24df4271c7529751c989a19a7eac198c8db6bcf15bc6055c88291e32cb01582"
+    },
+    {
+      "id": "Screenshot 2026-01-02 at 20.48.16",
+      "path": "data/bg/Screenshot 2026-01-02 at 20.48.16.png",
+      "sha256": "86f518b1f43fed44548f49b7c4e5124b46b518fd99e34bb496ceb3180727f2d0"
+    },
+    {
+      "id": "Screenshot 2026-01-02 at 20.38.32",
+      "path": "data/bg/Screenshot 2026-01-02 at 20.38.32.png",
+      "sha256": "dba09931aba3709ec4bd2bed0b75d020ad0fdfa9c3d000e9cdb35e501cef7bb2"
+    },
+    {
+      "id": "Screenshot 2026-01-04 at 11.52.55",
+      "path": "data/bg/Screenshot 2026-01-04 at 11.52.55.png",
+      "sha256": "f9ab759dca1163fea8c23af44f1c402d7d266b27be31dc02770d1fc53ac3a31a"
+    },
+    {
+      "id": "CamView_Capture_03",
+      "path": "data/bg/CamView_Capture_03.png",
+      "sha256": "7b7dc1b878863aa0e7f72bbad9c14f47e6421f2bd2aa4966862461db655b320e"
+    },
+    {
+      "id": "CamView_Current",
+      "path": "data/bg/CamView_Current.png",
+      "sha256": "aefa05c913b78140cce21f9145f721388301fa547833b125dc45b790830b741c"
+    },
+    {
+      "id": "Screenshot 2026-01-02 at 20.48.41",
+      "path": "data/bg/Screenshot 2026-01-02 at 20.48.41.png",
+      "sha256": "99c61b843691455027379c0445aa4af658fa12c210bd0f0440aca3b4dd6aa129"
+    }
+  ],
+  "outfits": [
+    {
+      "id": "avatars_0a79051309004739abb9df765de3c033",
+      "path": "data/2d/avatars_0a79051309004739abb9df765de3c033.png",
+      "sha256": "c93bfdb088251943c608190fc89a34e5ee47c64f4ab44e6498ef37c3d9279e75"
+    },
+    {
+      "id": "avatars_0a4a89d3ac42468d8c59d9b5f7014e92",
+      "path": "data/2d/avatars_0a4a89d3ac42468d8c59d9b5f7014e92.png",
+      "sha256": "9291f5caf30e296df8b0253ea455214750bd94d8ec05aa605679b5211b900aac"
+    },
+    {
+      "id": "avatars_2105db85f51f44ce85e8b6ef814e0637",
+      "path": "data/2d/avatars_2105db85f51f44ce85e8b6ef814e0637.png",
+      "sha256": "3dcc70eaee532fb1c9729eb294a59b4b818e8f7c3fbc964cc4bb2e7f6dd00368"
+    },
+    {
+      "id": "avatars_494a1491ecec4bdaa5db76c03becc8b2",
+      "path": "data/2d/avatars_494a1491ecec4bdaa5db76c03becc8b2.png",
+      "sha256": "4f77842c28d498f47908337d7f5e47558e8d07af918ea9d6a6459feb244d31c4"
+    },
+    {
+      "id": "avatars_4e4086bfd6934b71a97569e966ea8b92",
+      "path": "data/2d/avatars_4e4086bfd6934b71a97569e966ea8b92.png",
+      "sha256": "b7a288bcffd1fe633cb659876c068f7825a4ac0f1780501b1aa385f3779a74f0"
+    },
+    {
+      "id": "avatars_b0363f04618b4fd190411c9adab8dd22",
+      "path": "data/2d/avatars_b0363f04618b4fd190411c9adab8dd22.png",
+      "sha256": "0fc3d4ae5b85c8c6795f024f9e641003e3fade00673a9361eaaef5cd7cfbfd9c"
+    },
+    {
+      "id": "avatars_d0b01c3ccd704607bfe303280549c9f8",
+      "path": "data/2d/avatars_d0b01c3ccd704607bfe303280549c9f8.png",
+      "sha256": "01c1ca3ae218c6b17676a639e76f6f2e0b5ded3937097c0299fc2d1a34dca902"
+    },
+    {
+      "id": "avatars_0938d6bdcc0c4be19c2a5190105b5143",
+      "path": "data/2d/avatars_0938d6bdcc0c4be19c2a5190105b5143.png",
+      "sha256": "8441d9fbff0e08f83e4997a987cb1495df5341788c0ff0e9ced7600f29b13e69"
+    },
+    {
+      "id": "avatars_c3a6bbb561de416e83651f8915c57d56",
+      "path": "data/2d/avatars_c3a6bbb561de416e83651f8915c57d56.png",
+      "sha256": "55a100bd64174f87c8666a3500c716c7247711a38ae54e1b546562edb8249989"
+    },
+    {
+      "id": "avatars_4405938be7bc4bb09c0b947bd13710dd",
+      "path": "data/2d/avatars_4405938be7bc4bb09c0b947bd13710dd.png",
+      "sha256": "397d329ada567c8df0ba2f8da3c11637a503c09e1c626900d1cd11efbff9200b"
+    },
+    {
+      "id": "avatars_f55c65361c9e4069afbb3433089a7bd5",
+      "path": "data/2d/avatars_f55c65361c9e4069afbb3433089a7bd5.png",
+      "sha256": "f575da97e3112e490b97f2cabd5f1c90f84510866a40225cdda7f6f41891f2cb"
+    },
+    {
+      "id": "avatars_e0dfdd75545345abaeb2447f4c7cc319",
+      "path": "data/2d/avatars_e0dfdd75545345abaeb2447f4c7cc319.png",
+      "sha256": "a4f72bac7002708d3444b4fcac839f138162f0948b69abe005126a49ccccedb1"
+    },
+    {
+      "id": "avatars_f0d378fb496d4e6f94e152d301b7f486",
+      "path": "data/2d/avatars_f0d378fb496d4e6f94e152d301b7f486.png",
+      "sha256": "1a6840b234c7701bd8fb9d90efa5da648e9cef474ca275406b8ef04795d17255"
+    },
+    {
+      "id": "avatars_bd7e6d80104e47f7a70c90d27c67bc16",
+      "path": "data/2d/avatars_bd7e6d80104e47f7a70c90d27c67bc16.png",
+      "sha256": "4405a05b95b4c14b3009f634bb81191c4a524a46c6302b3eb498dbc713c45b36"
+    },
+    {
+      "id": "avatars_911335d9d7814d82957d1213385714d7",
+      "path": "data/2d/avatars_911335d9d7814d82957d1213385714d7.png",
+      "sha256": "02104004e9b6e50d286769731e412bc4304166d6707eff689d5bdf0d0b8a93cb"
+    },
+    {
+      "id": "avatars_4997a382827940669bada1d66968734a",
+      "path": "data/2d/avatars_4997a382827940669bada1d66968734a.png",
+      "sha256": "fad6c643eb3d1638ad676a3d2379bb4268b42a26b5feeb885af67d4784c7a10a"
+    },
+    {
+      "id": "avatars_9b73c7f75aa84c6285a67a0c68023ff3",
+      "path": "data/2d/avatars_9b73c7f75aa84c6285a67a0c68023ff3.png",
+      "sha256": "b0a0db92d0c17de7345c071d7f274e80f9a425c961f0b72a733dba21380fa15f"
+    },
+    {
+      "id": "avatars_cd0c809498ea42fc83bee9e46fc054af",
+      "path": "data/2d/avatars_cd0c809498ea42fc83bee9e46fc054af.png",
+      "sha256": "d3dae83dcc1b7f473bdf8532b3f412a81e378e35f336b057b747a77652e7c947"
+    },
+    {
+      "id": "avatars_5bd9af33b79a455ca6f96a4fe5a1e760",
+      "path": "data/2d/avatars_5bd9af33b79a455ca6f96a4fe5a1e760.png",
+      "sha256": "3b129c117c2ef5f6e3c9d0eb14bfc6d556c9f37fc853470424c24ac17c172523"
+    },
+    {
+      "id": "avatars_02f5b190a1f44bab8320d1a8cdc50b3b",
+      "path": "data/2d/avatars_02f5b190a1f44bab8320d1a8cdc50b3b.png",
+      "sha256": "13e803c3cd5d50ee0e3c48866d5936e4bc2643a7670e1427bc6e635b5c92406f"
+    },
+    {
+      "id": "m1_light_29",
+      "path": "data/2d/m1_light_29.png",
+      "sha256": "d959c438a262198c769b3ea930129ee02065fff7c19924fdb4eaacb61c1bee3d"
+    },
+    {
+      "id": "avatars_38987077f1044592abd2954b4774a03a",
+      "path": "data/2d/avatars_38987077f1044592abd2954b4774a03a.png",
+      "sha256": "113165cff7c353ccd2061692490360d98dc3b01a411b4e6da904e35ced6cd18b"
+    },
+    {
+      "id": "avatars_f025d78397614cf9b60e264481a29e59",
+      "path": "data/2d/avatars_f025d78397614cf9b60e264481a29e59.png",
+      "sha256": "d7940aec2dbf5f3364e0e1dae55b82f70e3d409729c977a22871a1d923200bc3"
+    },
+    {
+      "id": "avatars_92428d84fc7f4aebaa1f123943c07deb",
+      "path": "data/2d/avatars_92428d84fc7f4aebaa1f123943c07deb.png",
+      "sha256": "f62a6a8d22eeacad8cd153e5441d8e72eed087e412b7758275c508e58e1d5c2b"
+    },
+    {
+      "id": "avatars_7218cc72d678412d83a7bbc6621f1037",
+      "path": "data/2d/avatars_7218cc72d678412d83a7bbc6621f1037.png",
+      "sha256": "1646e1688ced5e8b9d44dcbdc6f037a93d84bbdc56ae95f5224b9e99540dae5b"
+    },
+    {
+      "id": "avatars_36e314583f5f4efeb38f0eb162c34126",
+      "path": "data/2d/avatars_36e314583f5f4efeb38f0eb162c34126.png",
+      "sha256": "f86972f750ec6e140a989a783a06d656c74240b8bd977ac193f8b41c3db30904"
+    },
+    {
+      "id": "avatars_4866e7434261488d8942c081f1742a3f",
+      "path": "data/2d/avatars_4866e7434261488d8942c081f1742a3f.png",
+      "sha256": "fc4f2c6823974b4b3d6ab548503ab89ce71c2c071cee4a76f7dcb37479cdf5d3"
+    },
+    {
+      "id": "m5_brown_1",
+      "path": "data/2d/m5_brown_1.png",
+      "sha256": "ae2cea20c1211691f2c3ee6b2cc7fcbc3f06b1399656742da65e8129f52fbe5a"
+    },
+    {
+      "id": "avatars_715c6a2af9f94bbeb5b1dd3067134388",
+      "path": "data/2d/avatars_715c6a2af9f94bbeb5b1dd3067134388.png",
+      "sha256": "3e27f87ccc3ca94fb0599ff9d9b11f8aeb2f8b88cb21d3b810810ee1bda0982d"
+    },
+    {
+      "id": "avatars_2342c478e4b84f58995ae04340858b5b",
+      "path": "data/2d/avatars_2342c478e4b84f58995ae04340858b5b.png",
+      "sha256": "73db6609683f0414eb006cd8134beca061bb82f73ef53fb5554b28e20f51442a"
+    },
+    {
+      "id": "avatars_202ee9af05d64dce86958cb8f3d50e81",
+      "path": "data/2d/avatars_202ee9af05d64dce86958cb8f3d50e81.png",
+      "sha256": "95fc41a1e5cf3531871625e4363be0a02d6d1511ce7aec3d8ed47eb02f5a4831"
+    },
+    {
+      "id": "avatars_82bb3461630347fb8aac3052f55308e2",
+      "path": "data/2d/avatars_82bb3461630347fb8aac3052f55308e2.png",
+      "sha256": "2388f1f15e5524b7f611021ca49f90ea91c41b52a47434e0cb6459d9d000f8d9"
+    },
+    {
+      "id": "avatars_2219669a8910494b8083d5cdaf00dfa3",
+      "path": "data/2d/avatars_2219669a8910494b8083d5cdaf00dfa3.png",
+      "sha256": "62d540e4695eec2e972542e006316dbdb7104f98804d3102ad819c8555c2f609"
+    },
+    {
+      "id": "avatars_7a8063e1aaa2474ba4bfe6a557b7441a",
+      "path": "data/2d/avatars_7a8063e1aaa2474ba4bfe6a557b7441a.png",
+      "sha256": "439c20fdad405c70fd8a0e1ccb6b0c5578991f5253418b14910cb565ef74d35a"
+    },
+    {
+      "id": "avatars_73a80ff3cb6947e88c8ca58ebb1e3c87",
+      "path": "data/2d/avatars_73a80ff3cb6947e88c8ca58ebb1e3c87.png",
+      "sha256": "d848c16d8ed04ff1bfe39f01699b0244d120e402aa664dadc7a4178890da808a"
+    },
+    {
+      "id": "avatars_d118b33447be4f8780f9d665918f71d8",
+      "path": "data/2d/avatars_d118b33447be4f8780f9d665918f71d8.png",
+      "sha256": "fecafdde2e188f77aca8cfae37e35c96ac2e6d8351a7952e97fbe87c5fd66920"
+    },
+    {
+      "id": "avatars_56b973a1cea44ddea51806681c792618",
+      "path": "data/2d/avatars_56b973a1cea44ddea51806681c792618.png",
+      "sha256": "ce257d5671e7ef6fbe05b34405a623a3bf156190443e7e1729599f9aa11ee458"
+    },
+    {
+      "id": "avatars_0f19a282a8644278b1088c9437a8a0da",
+      "path": "data/2d/avatars_0f19a282a8644278b1088c9437a8a0da.png",
+      "sha256": "cb162d6fc39a1401d5030d890d2db22b6de0c0840df7f58f784996ee3d85f40a"
+    },
+    {
+      "id": "avatars_fb125b389e744c2c9aa149d0edd6a6ad",
+      "path": "data/2d/avatars_fb125b389e744c2c9aa149d0edd6a6ad.png",
+      "sha256": "4934c9f978f01d5c5c731b4b64cfb94feacf11bf67f1b77ee032adf5913425c1"
+    },
+    {
+      "id": "avatars_9e65027f41854785bd0a0b293de96293",
+      "path": "data/2d/avatars_9e65027f41854785bd0a0b293de96293.png",
+      "sha256": "9f64741dd68798a1682b483511bc6a80965ebcf0e0fb0faba669c0af700bdb5e"
+    },
+    {
+      "id": "avatars_ba209d885a7f4fabb3b4d79cfa84ec28",
+      "path": "data/2d/avatars_ba209d885a7f4fabb3b4d79cfa84ec28.png",
+      "sha256": "086d422c7274f699591258fdddf62f5e191de93567280b17500ebc4c4419cf30"
+    },
+    {
+      "id": "avatars_2b450cefc59d40b3ae8237cd36e4277a",
+      "path": "data/2d/avatars_2b450cefc59d40b3ae8237cd36e4277a.png",
+      "sha256": "557a183c5473088c86326453553c6e183828eb4fc051ebb1cad054101993eba9"
+    },
+    {
+      "id": "avatars_82548990e0cb45d190d2e90d6b46b185",
+      "path": "data/2d/avatars_82548990e0cb45d190d2e90d6b46b185.png",
+      "sha256": "5cf9890509f1567b3719e4df9a087925eb0400bbb26c7255245e549d6e87df53"
+    },
+    {
+      "id": "avatars_1c3d0a0ae02b469f9667d291a94ed98e",
+      "path": "data/2d/avatars_1c3d0a0ae02b469f9667d291a94ed98e.png",
+      "sha256": "060de261b30bcf4c1741027461fee9e173db2d1ee7a63de8a72c8719c7262d04"
+    },
+    {
+      "id": "avatars_c047e8641aac4355955a6b57ad8d6fbb",
+      "path": "data/2d/avatars_c047e8641aac4355955a6b57ad8d6fbb.png",
+      "sha256": "8557a32fcd355b616e0427f44f90b77114b23dedf8eb4b4a6dc1306c70338a6e"
+    },
+    {
+      "id": "avatars_62f0eb65e0404d3695dbdf05511e60a4",
+      "path": "data/2d/avatars_62f0eb65e0404d3695dbdf05511e60a4.png",
+      "sha256": "79e14e9aeb7571c145b1b758bd9237f09c0e91ccad2fb013c4173f3290cb3375"
+    },
+    {
+      "id": "avatars_d9c1dd245a9f4d7dad6343766ca2a470",
+      "path": "data/2d/avatars_d9c1dd245a9f4d7dad6343766ca2a470.png",
+      "sha256": "0465ad8d7af9315dbd56bd392d0d2630889002ef71307b004013c8db1a436385"
+    },
+    {
+      "id": "avatars_d57de73dc5274660b3b477ea5b356679",
+      "path": "data/2d/avatars_d57de73dc5274660b3b477ea5b356679.png",
+      "sha256": "8c6319b0082cd335cf4f7a82362dcd6829e0585c8599ab62308a0f10cc8b4896"
+    },
+    {
+      "id": "avatars_7b488963f413497d9b6daa5e45615609",
+      "path": "data/2d/avatars_7b488963f413497d9b6daa5e45615609.png",
+      "sha256": "2eede4e43438d73b42b4151e6cfa99c3b9b955fd391d8fba1a56af544e7c6350"
+    },
+    {
+      "id": "avatars_c7b9ca28d2ea477e8a164b7992e67725",
+      "path": "data/2d/avatars_c7b9ca28d2ea477e8a164b7992e67725.png",
+      "sha256": "e8c7faa3d882c60a93b57c9d8cf9f81a918ebf1971bea649baab7adc874d23bd"
+    },
+    {
+      "id": "avatars_4259814eb5044f2a9baa9f8e4f3523ad",
+      "path": "data/2d/avatars_4259814eb5044f2a9baa9f8e4f3523ad.png",
+      "sha256": "66f7e82d6f33245a40b87f4c008ffad6fa7d3c1bc681e37f228295dab3c5ac8c"
+    },
+    {
+      "id": "avatars_f1723309bdb6403c8e24afab822486e6",
+      "path": "data/2d/avatars_f1723309bdb6403c8e24afab822486e6.png",
+      "sha256": "721ed87e6d3f67d1a988d2018c8b611c2ff56fe4549735de643099d397768694"
+    },
+    {
+      "id": "avatars_18001b63b997479ba5570eef6007adbd",
+      "path": "data/2d/avatars_18001b63b997479ba5570eef6007adbd.png",
+      "sha256": "c0ff9d282dd0879aef279fd54493ec6d7ce4e52bfcee9b41f93beba18d397522"
+    },
+    {
+      "id": "avatars_1023637449b4456581a3931d0d9e945a",
+      "path": "data/2d/avatars_1023637449b4456581a3931d0d9e945a.png",
+      "sha256": "afa6a04cb60de51af67464cbad5c113f3f54cda528e6fa722ca16044a09fdf95"
+    },
+    {
+      "id": "avatars_e4e0c62222b1413bb45585e0aee2b598",
+      "path": "data/2d/avatars_e4e0c62222b1413bb45585e0aee2b598.png",
+      "sha256": "2aad25068354d6edbfe1ce97ed8119c7b411168c916fec2d1754bbdfb24a2c90"
+    },
+    {
+      "id": "avatars_4c90270c6f044faaa94d16691c46e626",
+      "path": "data/2d/avatars_4c90270c6f044faaa94d16691c46e626.png",
+      "sha256": "d295462196f98cd8bea420eff662e171d59d683fd4b5e594ce78d4d0def484a9"
+    },
+    {
+      "id": "m5_light_1",
+      "path": "data/2d/m5_light_1.png",
+      "sha256": "7f65cb3cd87142a6aa940cc7b19139da06ae663cced1117f5cf56be82e6c550e"
+    },
+    {
+      "id": "avatars_61aebb3d761d45c483244dbc1b7a51df",
+      "path": "data/2d/avatars_61aebb3d761d45c483244dbc1b7a51df.png",
+      "sha256": "09680dee9d808ba868b35a7e3f87b85cc5763cd37f6a891ffd8c6bd7884aadd1"
+    },
+    {
+      "id": "avatars_1c6b676f86e64007a3c2c10a47877c63",
+      "path": "data/2d/avatars_1c6b676f86e64007a3c2c10a47877c63.png",
+      "sha256": "c0bb2ee7f328890a2852be599713b069fe8d9efc5dd13593abbb48bd4f78d0ba"
+    },
+    {
+      "id": "avatars_22b6ce53ce2448e6b0efd6d1b85ab2ce",
+      "path": "data/2d/avatars_22b6ce53ce2448e6b0efd6d1b85ab2ce.png",
+      "sha256": "028e85f39bf61d37f7be5608606d8b3f59478352e7ffb1a97ea063ac2800fff5"
+    },
+    {
+      "id": "avatars_9d9283018d7b45cfa283198380f3382c",
+      "path": "data/2d/avatars_9d9283018d7b45cfa283198380f3382c.png",
+      "sha256": "ea2689fb849a15cef6ec55cb82058b7cb83c570b54bd9304244d886d64edd14f"
+    },
+    {
+      "id": "avatars_dca7762a578247e9813c54d0ba329d78",
+      "path": "data/2d/avatars_dca7762a578247e9813c54d0ba329d78.png",
+      "sha256": "2633365d9221cdfbadc21d60b2ac9d859197bc9a0b59b328c6733aff5cd3bca6"
+    },
+    {
+      "id": "avatars_7d03ff3724c04429b64c6c38e8954dac",
+      "path": "data/2d/avatars_7d03ff3724c04429b64c6c38e8954dac.png",
+      "sha256": "7e905a9f8e24665f7d198fd4e71ae5726e45d2b23e8db1834221cbedfbfda29b"
+    },
+    {
+      "id": "avatars_3a76147cdff143ef85e06d409dc39a62",
+      "path": "data/2d/avatars_3a76147cdff143ef85e06d409dc39a62.png",
+      "sha256": "4b722055706a6759c89a276666cc4b5267eee3e9ab40960503dc46438e138aa1"
+    },
+    {
+      "id": "avatars_7ef08152199347c1b47a758a9b48b5f6",
+      "path": "data/2d/avatars_7ef08152199347c1b47a758a9b48b5f6.png",
+      "sha256": "8a0cf293463639030ac5543d899da92be8d42b853060f69cbf4e99578ec5bed8"
+    },
+    {
+      "id": "avatars_793863203524427980c4ab9df2b0606a",
+      "path": "data/2d/avatars_793863203524427980c4ab9df2b0606a.png",
+      "sha256": "38f4306f37d7e02a62cdca77107358a7cc684c97d3a668d5051b01040a84fd65"
+    },
+    {
+      "id": "avatars_4784c4cfe45e43db995ab78333e4f0dc",
+      "path": "data/2d/avatars_4784c4cfe45e43db995ab78333e4f0dc.png",
+      "sha256": "d291ef1f735b1abf8a67009ea36ab06c8013682548ed4c2667dac6c04159f59b"
+    },
+    {
+      "id": "avatars_e7800f6d45f346fab4f57435aa01b65f",
+      "path": "data/2d/avatars_e7800f6d45f346fab4f57435aa01b65f.png",
+      "sha256": "c097cbb36d6efa6125dd831365ce456ce970fd1cf10c53f4ecbfd5d929c339d0"
+    },
+    {
+      "id": "avatars_578c0f63ed24495d832b89a8eb5c2294",
+      "path": "data/2d/avatars_578c0f63ed24495d832b89a8eb5c2294.png",
+      "sha256": "0302e19a96d5c5fa5fa850e671d13e70914ff66680705b5cc29cce64b3b0bac3"
+    },
+    {
+      "id": "avatars_f0f3096c851b41e899dbc3ead41a2d6f",
+      "path": "data/2d/avatars_f0f3096c851b41e899dbc3ead41a2d6f.png",
+      "sha256": "b212b65751f1ec632a2596ab519261819708bc52b468be95b319ed6341e6e1ba"
+    },
+    {
+      "id": "avatars_ebe51aca2b7a466bbd1b742048e8ce96",
+      "path": "data/2d/avatars_ebe51aca2b7a466bbd1b742048e8ce96.png",
+      "sha256": "6939b3ffcb99717a733718ccdaed9111fbf87163f047755fded2184e0ea9c461"
+    },
+    {
+      "id": "avatars_e04a7a76a3784afc8a00969a324b6a7c",
+      "path": "data/2d/avatars_e04a7a76a3784afc8a00969a324b6a7c.png",
+      "sha256": "e54bcf3203b3017e2099f0d282abe6b040c6a030b8ee51b18f9c937fe747afd5"
+    },
+    {
+      "id": "avatars_18a9e4ff089a428195ac3e42cc9979f6",
+      "path": "data/2d/avatars_18a9e4ff089a428195ac3e42cc9979f6.png",
+      "sha256": "35ea7a0e2a724406c30581d545920c6462e809ba221de9a23937e2ad66c4c15a"
+    },
+    {
+      "id": "avatars_d32efcd2d4a246fcab14f63cfd5305fa",
+      "path": "data/2d/avatars_d32efcd2d4a246fcab14f63cfd5305fa.png",
+      "sha256": "f131cfc3a0437254b0fa191c6cf2a53e09b517ebcfd22572ee2d162c5148b97e"
+    },
+    {
+      "id": "avatars_dc5d0a48c3b1486f8001410a72d66aba",
+      "path": "data/2d/avatars_dc5d0a48c3b1486f8001410a72d66aba.png",
+      "sha256": "52ffebd4e8fd034af8ab0849b221e9a858b5a88be192944fae221338c5439695"
+    },
+    {
+      "id": "avatars_3c94a62c34c44184856cf81df6ee1332",
+      "path": "data/2d/avatars_3c94a62c34c44184856cf81df6ee1332.png",
+      "sha256": "0311fd85131ab70c88d91b50e57bcbbe411d338473e355110a3e09af4c48485c"
+    },
+    {
+      "id": "avatars_b944fa92d0274bc3b76772496fba9092",
+      "path": "data/2d/avatars_b944fa92d0274bc3b76772496fba9092.png",
+      "sha256": "f692c08387fd5310531b4a2f5d43e7fb0da9e6ee7249213a394996c6997258aa"
+    },
+    {
+      "id": "avatars_fb0710f9c4494b98ab37d4c6f0942467",
+      "path": "data/2d/avatars_fb0710f9c4494b98ab37d4c6f0942467.png",
+      "sha256": "dbffc29cca0b8e15231dd18fa2578010059257db074031cdf99d0abaed6141db"
+    },
+    {
+      "id": "avatars_523ac21e4dfe478cbd4f8df0e5c644fc",
+      "path": "data/2d/avatars_523ac21e4dfe478cbd4f8df0e5c644fc.png",
+      "sha256": "8acdaa8c330fb5c130d73bcd2b6fb57145f5c0a6c9f7f92e17ed6b4255bdf3f5"
+    },
+    {
+      "id": "avatars_3a868f2785434dbb8b504204d6353aeb",
+      "path": "data/2d/avatars_3a868f2785434dbb8b504204d6353aeb.png",
+      "sha256": "e603a087f765aeaeec36a56bd90b917add489e36e128580aaa6f67ccb83b8583"
+    },
+    {
+      "id": "avatars_9f37764b14294261a4b204d6dc903ab1",
+      "path": "data/2d/avatars_9f37764b14294261a4b204d6dc903ab1.png",
+      "sha256": "4c51e4cf395ced94733971ebad9accb550b252bc2407ccf5f81c672e68cab824"
+    },
+    {
+      "id": "avatars_82ae798a1579400c8bae18564de4e410",
+      "path": "data/2d/avatars_82ae798a1579400c8bae18564de4e410.png",
+      "sha256": "5f472ca71bc9a51f83f2b42671ba91c0e2e085fbcc981ff659713e98f1450a6f"
+    },
+    {
+      "id": "avatars_5891d13fd09b4576ad97dd7e5950b105",
+      "path": "data/2d/avatars_5891d13fd09b4576ad97dd7e5950b105.png",
+      "sha256": "db390b1465bcf35ccb7c87da47d871e2db0d52fc875a74feb28fc5a1149ef5bc"
+    },
+    {
+      "id": "avatars_ddf5d51dfff9460ca76a547d5597edd4",
+      "path": "data/2d/avatars_ddf5d51dfff9460ca76a547d5597edd4.png",
+      "sha256": "98255a916d0c602f50877c91d27d9a79f189f0d122b91932dbf7f5c0e1d7ac86"
+    },
+    {
+      "id": "avatars_ed4c8ccf17ab4f73b8b060e3ec41cf34",
+      "path": "data/2d/avatars_ed4c8ccf17ab4f73b8b060e3ec41cf34.png",
+      "sha256": "173e04dbae73e85b1ebaa6d0ff68f1b55a3c6e0b2ed34c38ecbdeea70ab48187"
+    },
+    {
+      "id": "avatars_c1e1c72c61f34ec5977131012101ed4a",
+      "path": "data/2d/avatars_c1e1c72c61f34ec5977131012101ed4a.png",
+      "sha256": "bad67f3586070b0c32dce7fa2d8a0071c92a83d9648e75632f1dd41dc12f5a87"
+    },
+    {
+      "id": "avatars_495ca4574f1a458aa4598a299bfcb11a",
+      "path": "data/2d/avatars_495ca4574f1a458aa4598a299bfcb11a.png",
+      "sha256": "53623d5b547f549ed766de0906c3950abeb8b7b4845ba5f3936d6e059bc3b4a5"
+    },
+    {
+      "id": "avatars_ec9a9213410543f3aa999294d275fb68",
+      "path": "data/2d/avatars_ec9a9213410543f3aa999294d275fb68.png",
+      "sha256": "58d9a36c22f86bfa41d2f75e1520ab6688118b8ab4522b363d9522a14004774e"
+    },
+    {
+      "id": "avatars_6e71b24f6bee41a08ae28c795d586351",
+      "path": "data/2d/avatars_6e71b24f6bee41a08ae28c795d586351.png",
+      "sha256": "c8e6195f44c5a585f384bd68a9172e7f77f2d5a268b3e55500b78efdb766e195"
+    },
+    {
+      "id": "m5_dark_1",
+      "path": "data/2d/m5_dark_1.png",
+      "sha256": "6b76121a65423389e843f35e5588be634450a420f032ca4e21498d1789332c07"
+    },
+    {
+      "id": "m5_light_6",
+      "path": "data/2d/m5_light_6.png",
+      "sha256": "c3773bffff3b684abc56b0d2ca087b17571be4fd3ac1ba3621a48fc9d2654860"
+    },
+    {
+      "id": "avatars_136988237e224b078caf5a776d5a7d90",
+      "path": "data/2d/avatars_136988237e224b078caf5a776d5a7d90.png",
+      "sha256": "3d8901b36e3187c7140401b70f2fca766c2d787b26cec273da0c1fc776f25e07"
+    },
+    {
+      "id": "avatars_4d282e43018c445792ebbdad17386d24",
+      "path": "data/2d/avatars_4d282e43018c445792ebbdad17386d24.png",
+      "sha256": "20e36819dc189dab613ef2adc9291d82548e91a809f3f17f2ba649f6b2fb1891"
+    },
+    {
+      "id": "avatars_6bbdaea5a6964a949e9192a0be3325f5",
+      "path": "data/2d/avatars_6bbdaea5a6964a949e9192a0be3325f5.png",
+      "sha256": "f74e40ee2066d34b68e0d8a9a0fc6325cbed0af6ff942c11d5f0109ee371a7c9"
+    },
+    {
+      "id": "avatars_8be775f3b3f2494fb58ea619ed047a33",
+      "path": "data/2d/avatars_8be775f3b3f2494fb58ea619ed047a33.png",
+      "sha256": "20366274fa410694cb084da0123795a458f6487a352f005bb45bc8de9ac20bb4"
+    },
+    {
+      "id": "avatars_582dd3992dcb4484a449b4598e78323a",
+      "path": "data/2d/avatars_582dd3992dcb4484a449b4598e78323a.png",
+      "sha256": "7c8500cb6b13829d01c24005009754c0a359c73469f4ffea2b97d37b57506952"
+    },
+    {
+      "id": "avatars_170611f6019f447d848dc9f45afdf848",
+      "path": "data/2d/avatars_170611f6019f447d848dc9f45afdf848.png",
+      "sha256": "34eef6f99d986d494191f9e749c237fba86c465fe71abab12f219b874d3c8408"
+    },
+    {
+      "id": "avatars_47c281321d7744ca9fda18f980328ad1",
+      "path": "data/2d/avatars_47c281321d7744ca9fda18f980328ad1.png",
+      "sha256": "929120a1009a5a59d46dd637c85e6ebe47762a9b7b0bccf9f0448768c9d7008f"
+    },
+    {
+      "id": "avatars_c4e36d88a50849e38f271f9570f04cf7",
+      "path": "data/2d/avatars_c4e36d88a50849e38f271f9570f04cf7.png",
+      "sha256": "7359bad7e0454ecdd8df1508cf26769103ee969c4d0c6beb2f65e21f22f144db"
+    },
+    {
+      "id": "avatars_f62e968c22764e6bb87b7b8bedcbd7ab",
+      "path": "data/2d/avatars_f62e968c22764e6bb87b7b8bedcbd7ab.png",
+      "sha256": "d564617f4ad9becc88d08583fdeb51f495cc4427631d13d24d360d28555e3770"
+    }
+  ]
+}
