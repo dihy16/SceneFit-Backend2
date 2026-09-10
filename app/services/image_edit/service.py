@@ -173,7 +173,10 @@ def get_outfit_suggestion_remote(
     verify_ssl: bool | None = None,
 ) -> str:
     bg_path = Path(bg_path) if isinstance(bg_path, str) else bg_path
-    url = f"{VLM_BASE_URL}/api/v1/retrieval/vlm-suggest-outfit"
+    # The concrete VLM worker accepts ``bg_image``.  The similarly named
+    # retrieval route is a generic dispatcher expecting ``image``, which
+    # otherwise turns this internal request into a 422/502 failure.
+    url = f"{VLM_BASE_URL}/api/v1/workers/vlm-suggest-outfit"
     mime_type, _ = mimetypes.guess_type(bg_path)
     mime_type = mime_type or "image/png"
     verify = VLM_VERIFY_SSL if verify_ssl is None else verify_ssl
