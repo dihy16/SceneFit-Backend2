@@ -180,6 +180,17 @@ class Qwen3VLReranker():
         )
         for key in temp_inputs:
             inputs[key] = temp_inputs[key]
+        # Transformers 5.x requires Qwen's multimodal token-type map to be a
+        # tensor. The processor leaves it as a Python list here, whereas the
+        # manual tokenizer padding above only converts input IDs and masks.
+        # Without this conversion Qwen's RoPE implementation cannot index the
+        # map using its tensor attention mask.
+        mm_token_type_ids = inputs.get("mm_token_type_ids")
+        if mm_token_type_ids is not None and not torch.is_tensor(mm_token_type_ids):
+            inputs["mm_token_type_ids"] = torch.tensor(
+                mm_token_type_ids,
+                dtype=torch.long,
+            )
         return inputs
 
     def format_mm_content(
