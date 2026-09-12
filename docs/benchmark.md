@@ -12,6 +12,32 @@ python -m pip install -r requirements.txt
 
 Generated artifacts are written under `results/benchmark/` and are resumable. Free-tier Gemini inputs may be used by Google to improve its products; use a paid project if that is unsuitable for the dataset.
 
+## Pairwise Elo judge (default)
+
+New benchmark runs use a GPTEval3D-inspired blinded tournament instead of the
+legacy absolute 1--5 labels. Gemini compares anonymous left/right outfit pairs
+for the same scene across climate/season, activity/occasion, style/theme, color
+harmony, and overall suitability. Each comparison is repeated with sides
+reversed; only matching choices become wins, and disagreements become ties.
+
+The default seven Swiss rounds create 350 comparisons per scene (3,500 total),
+stored as `judge_responses.jsonl`, `comparisons.jsonl`, `judge.meta.json`, and
+`ratings.json`. Results use pairwise agreement, decisive accuracy, Kendall tau,
+top-k overlap, and mean Elo rather than nDCG. Use a fresh benchmark directory;
+pairwise artifacts cannot be mixed with older `judgments.jsonl` runs.
+
+```bash
+python scripts/benchmark.py judge --protocol pairwise-elo-v1
+python scripts/benchmark.py validate-judge
+python scripts/benchmark.py collect --protocol pairwise-elo-v1
+python scripts/benchmark.py evaluate --protocol pairwise-elo-v1
+```
+
+To score already-collected rankings with a new pairwise judge, keep the
+existing manifest and rankings, point `judge` and `validate-judge` at a fresh
+`--judge-dir`, then pass that directory to `evaluate --judge-dir`. The Gradio
+viewer accepts the same separate `--judge-dir` argument.
+
 ## Colab notebook workflow
 
 Upload [benchmark_colab.ipynb](../benchmark_colab.ipynb) to Colab and run its

@@ -21,6 +21,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.services.benchmark.gemini_judge import DEFAULT_JUDGE_MODEL
+from app.services.benchmark.pairwise import (
+    DEFAULT_PAIRS_PER_REQUEST,
+    DEFAULT_ROUNDS,
+    PROTOCOL as PAIRWISE_PROTOCOL,
+)
 
 
 REMOTE_ROOT = Path("/content")
@@ -147,6 +152,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     parser.add_argument("--batch-size", type=int, default=10)
+    parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--methods", nargs="+", default=None)
     stages = parser.add_mutually_exclusive_group()
@@ -240,9 +248,12 @@ def main() -> int:
         "seed": args.seed,
         "model": args.model,
         "batch_size": args.batch_size,
+        "protocol": args.protocol,
+        "rounds": args.rounds,
+        "pairs_per_request": args.pairs_per_request,
         "methods": args.methods,
     }
-    if checkpoint and checkpoint.get("version") != 2:
+    if checkpoint and checkpoint.get("version") != 3:
         raise ValueError(
             "latest.zip uses the old checkpoint format; use a fresh --output-dir"
         )
@@ -257,7 +268,7 @@ def main() -> int:
 
     def state() -> dict:
         return {
-            "version": 2,
+            "version": 3,
             "configuration": expected_configuration,
             "pilot_completed": pilot_completed,
             "judged_scene_indices": sorted(judged),
@@ -281,6 +292,7 @@ def main() -> int:
                     "python", "scripts/benchmark.py", "pilot",
                     "--model", args.model,
                     "--max-attempts", str(args.max_attempts),
+                    "--protocol", args.protocol,
                 ],
                 state(),
                 args.timeout,
@@ -304,6 +316,9 @@ def main() -> int:
                 "--model", args.model,
                 "--batch-size", str(args.batch_size),
                 "--max-attempts", str(args.max_attempts),
+                "--protocol", args.protocol,
+                "--rounds", str(args.rounds),
+                "--pairs-per-request", str(args.pairs_per_request),
             ]
             _run_and_archive(args.session, command, state(), args.timeout)
             archive = output_dir / f"judge-scene-{scene_index + 1:03d}.zip"
@@ -318,15 +333,15 @@ def main() -> int:
             )
             return 0
 
-    _remote_command(
-        args.session,
-        [
-            "python", "scripts/benchmark.py", "validate-judgments",
-            "--model", args.model,
-            "--batch-size", str(args.batch_size),
-        ],
-        300,
-    )
+    validation = ["python", "scripts/benchmark.py"]
+    if args.protocol == PAIRWISE_PROTOCOL:
+        validation.extend([
+            "validate-judge", "--model", args.model, "--rounds", str(args.rounds),
+            "--pairs-per-request", str(args.pairs_per_request),
+        ])
+    else:
+        validation.extend(["validate-judgments", "--model", args.model, "--batch-size", str(args.batch_size)])
+    _remote_command(args.session, validation, 300)
 
     if args.methods is None or "vlm" in args.methods:
         _remote_command(
@@ -353,6 +368,9 @@ def main() -> int:
             "--scene-index", str(scene_index),
             "--model", args.model,
             "--batch-size", str(args.batch_size),
+            "--protocol", args.protocol,
+            "--rounds", str(args.rounds),
+            "--pairs-per-request", str(args.pairs_per_request),
         ]
         if args.methods:
             command.extend(["--methods", *args.methods])
@@ -362,7 +380,11 @@ def main() -> int:
         shutil.copy2(archive, latest_archive)
         print(f"Downloaded completed rankings to {archive}")
 
-    _remote_command(args.session, ["python", "scripts/benchmark.py", "evaluate"], args.timeout)
+    _remote_command(
+        args.session,
+        ["python", "scripts/benchmark.py", "evaluate", "--protocol", args.protocol],
+        args.timeout,
+    )
     _remote_exec(
         args.session,
         "from pathlib import Path\n"

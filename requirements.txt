@@ -8,6 +8,7 @@ trimesh
 pyrender 
 pyglet 
 numpy 
+gradio>=6.0,<7
 Pillow
 pydantic-settings
 uvicorn

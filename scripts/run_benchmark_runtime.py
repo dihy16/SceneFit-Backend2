@@ -17,6 +17,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.services.benchmark.gemini_judge import DEFAULT_JUDGE_MODEL
+from app.services.benchmark.pairwise import (
+    DEFAULT_PAIRS_PER_REQUEST,
+    DEFAULT_ROUNDS,
+    PROTOCOL as PAIRWISE_PROTOCOL,
+)
 
 
 DEFAULT_RUN_DIR = REPO_ROOT / "results" / "benchmark" / "latest"
@@ -34,6 +39,9 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     parser.add_argument("--batch-size", type=int, default=10)
+    parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--methods", nargs="+", default=["clip", "aesthetic"])
     parser.add_argument(
@@ -85,6 +93,9 @@ def _configuration(args: argparse.Namespace) -> dict[str, Any]:
         "seed": args.seed,
         "model": args.model,
         "batch_size": args.batch_size,
+        "protocol": args.protocol,
+        "rounds": args.rounds,
+        "pairs_per_request": args.pairs_per_request,
         "methods": args.methods,
     }
 
@@ -92,7 +103,7 @@ def _configuration(args: argparse.Namespace) -> dict[str, Any]:
 def _validate_state(state: dict[str, Any], configuration: dict[str, Any]) -> None:
     if not state:
         return
-    if state.get("version") != 2:
+    if state.get("version") != 3:
         raise ValueError(
             "latest.zip uses an unsupported checkpoint format; choose a fresh "
             "--checkpoint-dir"
@@ -106,7 +117,7 @@ def _validate_state(state: dict[str, Any], configuration: dict[str, Any]) -> Non
 
 def _state(configuration: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
     return {
-        "version": 2,
+        "version": 3,
         "configuration": configuration,
         "pilot_completed": bool(previous.get("pilot_completed", False)),
         "judged_scene_indices": sorted(
@@ -180,6 +191,8 @@ def _judge(args: argparse.Namespace, state: dict[str, Any], configuration: dict[
                 args.model,
                 "--max-attempts",
                 str(args.max_attempts),
+                "--protocol",
+                args.protocol,
             ]
         )
         current["pilot_completed"] = True
@@ -205,6 +218,12 @@ def _judge(args: argparse.Namespace, state: dict[str, Any], configuration: dict[
                 str(args.batch_size),
                 "--max-attempts",
                 str(args.max_attempts),
+                "--protocol",
+                args.protocol,
+                "--rounds",
+                str(args.rounds),
+                "--pairs-per-request",
+                str(args.pairs_per_request),
             ]
         )
         completed.add(scene_index)
@@ -216,19 +235,19 @@ def _judge(args: argparse.Namespace, state: dict[str, Any], configuration: dict[
             current,
         )
 
-    _run(
-        [
-            "python",
-            "scripts/benchmark.py",
-            "validate-judgments",
-            "--manifest",
-            str(manifest_path),
-            "--model",
-            args.model,
-            "--batch-size",
-            str(args.batch_size),
-        ]
-    )
+    validation = ["python", "scripts/benchmark.py"]
+    if args.protocol == PAIRWISE_PROTOCOL:
+        validation.extend([
+            "validate-judge", "--manifest", str(manifest_path), "--judge-dir", str(args.run_dir),
+            "--model", args.model, "--rounds", str(args.rounds),
+            "--pairs-per-request", str(args.pairs_per_request),
+        ])
+    else:
+        validation.extend([
+            "validate-judgments", "--manifest", str(manifest_path), "--model", args.model,
+            "--batch-size", str(args.batch_size),
+        ])
+    _run(validation)
 
 
 def _verify_image_edit_assets() -> None:
@@ -245,19 +264,19 @@ def _verify_image_edit_assets() -> None:
 
 def _retrieve(args: argparse.Namespace, state: dict[str, Any], configuration: dict[str, Any]) -> None:
     manifest_path = _manifest_path(args.run_dir)
-    _run(
-        [
-            "python",
-            "scripts/benchmark.py",
-            "validate-judgments",
-            "--manifest",
-            str(manifest_path),
-            "--model",
-            args.model,
-            "--batch-size",
-            str(args.batch_size),
-        ]
-    )
+    validation = ["python", "scripts/benchmark.py"]
+    if args.protocol == PAIRWISE_PROTOCOL:
+        validation.extend([
+            "validate-judge", "--manifest", str(manifest_path), "--judge-dir", str(args.run_dir),
+            "--model", args.model, "--rounds", str(args.rounds),
+            "--pairs-per-request", str(args.pairs_per_request),
+        ])
+    else:
+        validation.extend([
+            "validate-judgments", "--manifest", str(manifest_path), "--model", args.model,
+            "--batch-size", str(args.batch_size),
+        ])
+    _run(validation)
     if "image_edit" in args.methods:
         _verify_image_edit_assets()
     if "vlm" in args.methods:
@@ -296,6 +315,14 @@ def _retrieve(args: argparse.Namespace, state: dict[str, Any], configuration: di
                 args.model,
                 "--batch-size",
                 str(args.batch_size),
+                "--protocol",
+                args.protocol,
+                "--judge-dir",
+                str(args.run_dir),
+                "--rounds",
+                str(args.rounds),
+                "--pairs-per-request",
+                str(args.pairs_per_request),
                 "--methods",
                 *args.methods,
             ]
@@ -321,6 +348,10 @@ def _retrieve(args: argparse.Namespace, state: dict[str, Any], configuration: di
             "--rankings-dir",
             str(args.run_dir / "rankings"),
             "--output-dir",
+            str(args.run_dir),
+            "--protocol",
+            args.protocol,
+            "--judge-dir",
             str(args.run_dir),
         ]
     )

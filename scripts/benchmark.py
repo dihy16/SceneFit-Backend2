@@ -35,7 +35,15 @@ from app.services.benchmark.gemini_judge import (
     PROMPT_VERSION,
     GeminiJudge,
 )
-from app.services.benchmark.metrics import evaluate_benchmark
+from app.services.benchmark.metrics import evaluate_benchmark, evaluate_pairwise_benchmark
+from app.services.benchmark.pairwise import (
+    DEFAULT_PAIRS_PER_REQUEST,
+    DEFAULT_ROUNDS,
+    PROTOCOL as PAIRWISE_PROTOCOL,
+    run_pairwise_judging,
+    validate_pairwise_judge,
+)
+from app.services.benchmark.pairwise_judge import PairwiseGeminiJudge
 
 
 DEFAULT_RUN_DIR = REPO_ROOT / "results" / "benchmark" / "latest"
@@ -100,6 +108,10 @@ def build_parser() -> argparse.ArgumentParser:
     judge_parser.add_argument("--batch-size", type=int, default=10)
     judge_parser.add_argument("--max-attempts", type=int, default=3)
     judge_parser.add_argument("--scene-index", type=int)
+    judge_parser.add_argument("--judge-dir", type=_path, help="directory for pairwise judge artifacts")
+    judge_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    judge_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    judge_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
 
     pilot_parser = subparsers.add_parser(
         "pilot", help="score one pair without writing benchmark judgments"
@@ -109,6 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     pilot_parser.add_argument("--scene-index", type=int, default=0)
     pilot_parser.add_argument("--outfit-index", type=int, default=0)
     pilot_parser.add_argument("--max-attempts", type=int, default=3)
+    pilot_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
 
     validation_parser = subparsers.add_parser(
         "validate-judgments",
@@ -119,6 +132,15 @@ def build_parser() -> argparse.ArgumentParser:
     validation_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     validation_parser.add_argument("--batch-size", type=int, default=10)
 
+    pairwise_validation_parser = subparsers.add_parser(
+        "validate-judge", help="require a complete compatible pairwise judge run"
+    )
+    pairwise_validation_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
+    pairwise_validation_parser.add_argument("--judge-dir", type=_path, default=DEFAULT_RUN_DIR)
+    pairwise_validation_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
+    pairwise_validation_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    pairwise_validation_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+
     collect_parser = subparsers.add_parser("collect", help="collect or resume live worker rankings")
     collect_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
     collect_parser.add_argument("--judgments", type=_path, default=DEFAULT_RUN_DIR / "judgments.jsonl")
@@ -128,6 +150,10 @@ def build_parser() -> argparse.ArgumentParser:
     collect_parser.add_argument("--scene-index", type=int)
     collect_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     collect_parser.add_argument("--batch-size", type=int, default=10)
+    collect_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    collect_parser.add_argument("--judge-dir", type=_path, default=DEFAULT_RUN_DIR)
+    collect_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    collect_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
 
     scene_parser = subparsers.add_parser(
         "scene", help="judge then collect one scene as a resumable checkpoint"
@@ -141,12 +167,17 @@ def build_parser() -> argparse.ArgumentParser:
     scene_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     scene_parser.add_argument("--batch-size", type=int, default=10)
     scene_parser.add_argument("--max-attempts", type=int, default=3)
+    scene_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    scene_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    scene_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
 
     evaluate_parser = subparsers.add_parser("evaluate", help="evaluate cached rankings")
     evaluate_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
     evaluate_parser.add_argument("--judgments", type=_path, default=DEFAULT_RUN_DIR / "judgments.jsonl")
     evaluate_parser.add_argument("--rankings-dir", type=_path, default=DEFAULT_RUN_DIR / "rankings")
     evaluate_parser.add_argument("--output-dir", type=_path, default=DEFAULT_RUN_DIR)
+    evaluate_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    evaluate_parser.add_argument("--judge-dir", type=_path, default=DEFAULT_RUN_DIR)
 
     smoke_parser = subparsers.add_parser("smoke", help="run a tiny offline end-to-end smoke test")
     smoke_parser.add_argument("--run-dir", type=_path, default=DEFAULT_SMOKE_DIR)
@@ -164,6 +195,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--max-attempts", type=int, default=3)
     run_parser.add_argument("--config", type=_path, default=REPO_ROOT / "config" / "retrieval_methods.yaml")
     run_parser.add_argument("--methods", nargs="+", default=None)
+    run_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    run_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
+    run_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
     return parser
 
 
@@ -184,16 +218,25 @@ def main() -> int:
 
     if args.command == "judge":
         manifest = load_manifest(args.manifest)
-        judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
         scene_ids = (
             [_scene_id(manifest, args.scene_index)]
             if args.scene_index is not None
             else None
         )
-        count = run_judging(
-            manifest, REPO_ROOT, args.output, judge, args.batch_size, scene_ids
-        )
-        print(f"Appended {count} judgments to {args.output}")
+        if args.protocol == PAIRWISE_PROTOCOL:
+            judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            judge_dir = args.judge_dir or args.output.parent
+            count = run_pairwise_judging(
+                manifest, REPO_ROOT, judge_dir, judge,
+                args.rounds, args.pairs_per_request, scene_ids,
+            )
+            print(f"Appended {count} pairwise comparisons to {judge_dir}")
+        else:
+            judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            count = run_judging(
+                manifest, REPO_ROOT, args.output, judge, args.batch_size, scene_ids
+            )
+            print(f"Appended {count} judgments to {args.output}")
         return 0
 
     if args.command == "pilot":
@@ -205,12 +248,21 @@ def main() -> int:
             )
         scene = manifest["scenes"][args.scene_index]
         outfit = manifest["outfits"][args.outfit_index]
-        judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
-        result = judge.score_batch(
-            REPO_ROOT / scene["path"],
-            [(outfit["id"], REPO_ROOT / outfit["path"])],
-        )
-        print(json.dumps({"scene_id": scene_id, "judgment": result[0]}, indent=2))
+        if args.protocol == PAIRWISE_PROTOCOL:
+            other = manifest["outfits"][(args.outfit_index + 1) % len(manifest["outfits"])]
+            judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            result = judge.compare_batch(
+                REPO_ROOT / scene["path"],
+                [("pilot", REPO_ROOT / outfit["path"], REPO_ROOT / other["path"])],
+            )
+            print(json.dumps({"scene_id": scene_id, "comparison": result[0]}, indent=2))
+        else:
+            judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            result = judge.score_batch(
+                REPO_ROOT / scene["path"],
+                [(outfit["id"], REPO_ROOT / outfit["path"])],
+            )
+            print(json.dumps({"scene_id": scene_id, "judgment": result[0]}, indent=2))
         return 0
 
     if args.command == "validate-judgments":
@@ -225,15 +277,24 @@ def main() -> int:
         print(f"Judgment matrix complete: {count} pairs")
         return 0
 
+    if args.command == "validate-judge":
+        manifest = load_manifest(args.manifest)
+        count = validate_pairwise_judge(
+            manifest, args.judge_dir, args.model, args.rounds, args.pairs_per_request
+        )
+        print(f"Pairwise judge complete: {count} comparisons")
+        return 0
+
     if args.command == "collect":
         manifest = load_manifest(args.manifest)
-        validate_judgments(
-            manifest,
-            args.judgments,
-            args.model,
-            PROMPT_VERSION,
-            args.batch_size,
-        )
+        if args.protocol == PAIRWISE_PROTOCOL:
+            validate_pairwise_judge(
+                manifest, args.judge_dir, args.model, args.rounds, args.pairs_per_request
+            )
+        else:
+            validate_judgments(
+                manifest, args.judgments, args.model, PROMPT_VERSION, args.batch_size
+            )
         scene_ids = (
             [_scene_id(manifest, args.scene_index)]
             if args.scene_index is not None
@@ -253,22 +314,23 @@ def main() -> int:
     if args.command == "scene":
         manifest = load_manifest(args.manifest)
         scene_id = _scene_id(manifest, args.scene_index)
-        judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
-        count = run_judging(
-            manifest,
-            REPO_ROOT,
-            args.judgments,
-            judge,
-            args.batch_size,
-            scene_ids=[scene_id],
-        )
-        validate_judgments(
-            manifest,
-            args.judgments,
-            args.model,
-            PROMPT_VERSION,
-            args.batch_size,
-        )
+        if args.protocol == PAIRWISE_PROTOCOL:
+            judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            count = run_pairwise_judging(
+                manifest, REPO_ROOT, args.judgments.parent, judge,
+                args.rounds, args.pairs_per_request, [scene_id],
+            )
+            validate_pairwise_judge(
+                manifest, args.judgments.parent, args.model, args.rounds, args.pairs_per_request
+            )
+        else:
+            judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            count = run_judging(
+                manifest, REPO_ROOT, args.judgments, judge, args.batch_size, scene_ids=[scene_id]
+            )
+            validate_judgments(
+                manifest, args.judgments, args.model, PROMPT_VERSION, args.batch_size
+            )
         collect_rankings(
             manifest,
             REPO_ROOT,
@@ -284,12 +346,19 @@ def main() -> int:
         return 0
 
     if args.command == "evaluate":
-        result = evaluate_benchmark(
-            load_manifest(args.manifest),
-            args.judgments,
-            args.rankings_dir,
-            args.output_dir,
-        )
+        manifest = load_manifest(args.manifest)
+        if args.protocol == PAIRWISE_PROTOCOL:
+            result = evaluate_pairwise_benchmark(
+                manifest,
+                args.judge_dir / "comparisons.jsonl",
+                args.judge_dir / "ratings.json",
+                args.rankings_dir,
+                args.output_dir,
+            )
+        else:
+            result = evaluate_benchmark(
+                manifest, args.judgments, args.rankings_dir, args.output_dir
+            )
         print(json.dumps(result["metrics"], indent=2))
         return 0
 
@@ -343,21 +412,27 @@ def main() -> int:
     run_dir: Path = args.run_dir
     manifest_path = run_dir / "manifest.json"
     manifest = load_manifest(manifest_path) if manifest_path.exists() else _create_manifest(args, manifest_path)
-    judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
-    run_judging(manifest, REPO_ROOT, run_dir / "judgments.jsonl", judge, args.batch_size)
-    validate_judgments(
-        manifest,
-        run_dir / "judgments.jsonl",
-        args.model,
-        PROMPT_VERSION,
-        args.batch_size,
-    )
+    if args.protocol == PAIRWISE_PROTOCOL:
+        judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+        run_pairwise_judging(
+            manifest, REPO_ROOT, run_dir, judge, args.rounds, args.pairs_per_request
+        )
+        validate_pairwise_judge(
+            manifest, run_dir, args.model, args.rounds, args.pairs_per_request
+        )
+    else:
+        judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+        run_judging(manifest, REPO_ROOT, run_dir / "judgments.jsonl", judge, args.batch_size)
+        validate_judgments(
+            manifest, run_dir / "judgments.jsonl", args.model, PROMPT_VERSION, args.batch_size
+        )
     collect_rankings(manifest, REPO_ROOT, args.config, run_dir / "rankings", args.methods)
-    result = evaluate_benchmark(
-        manifest,
-        run_dir / "judgments.jsonl",
-        run_dir / "rankings",
-        run_dir,
+    result = (
+        evaluate_pairwise_benchmark(
+            manifest, run_dir / "comparisons.jsonl", run_dir / "ratings.json", run_dir / "rankings", run_dir
+        )
+        if args.protocol == PAIRWISE_PROTOCOL
+        else evaluate_benchmark(manifest, run_dir / "judgments.jsonl", run_dir / "rankings", run_dir)
     )
     print(json.dumps(result["metrics"], indent=2))
     return 0

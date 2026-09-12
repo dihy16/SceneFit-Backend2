@@ -107,3 +107,129 @@ def evaluate_benchmark(
     }
     write_json(output_dir / "summary.json", result)
     return result
+
+
+def _pairwise_rows(path: Path) -> list[dict[str, Any]]:
+    rows = []
+    with path.open(encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Invalid comparison JSONL at line {line_number}") from exc
+    return rows
+
+
+def _kendall_tau(order: Sequence[str], reference: Sequence[str]) -> float:
+    """Kendall tau for two complete deterministic orderings."""
+    positions = {item: index for index, item in enumerate(reference)}
+    concordant = 0
+    discordant = 0
+    for left_index, left in enumerate(order):
+        for right in order[left_index + 1 :]:
+            if positions[left] < positions[right]:
+                concordant += 1
+            else:
+                discordant += 1
+    total = concordant + discordant
+    return 0.0 if total == 0 else (concordant - discordant) / total
+
+
+def evaluate_pairwise_benchmark(
+    manifest: dict[str, Any],
+    comparisons_path: Path,
+    ratings_path: Path,
+    rankings_dir: Path,
+    output_dir: Path,
+    ks: Sequence[int] = (5, 10),
+) -> dict[str, Any]:
+    """Evaluate retrieval order against reconciled pairwise VLM preferences."""
+    comparisons = _pairwise_rows(comparisons_path)
+    ratings = json.loads(ratings_path.read_text(encoding="utf-8"))
+    expected_ids = [str(item["id"]) for item in manifest["outfits"]]
+    expected_scenes = [str(item["id"]) for item in manifest["scenes"]]
+    by_scene: dict[str, list[dict[str, Any]]] = {scene_id: [] for scene_id in expected_scenes}
+    for row in comparisons:
+        scene_id = str(row["scene_id"])
+        if scene_id not in by_scene:
+            raise ValueError(f"Unknown scene in comparisons: {scene_id}")
+        by_scene[scene_id].append(row)
+    ranking_paths = sorted(rankings_dir.glob("*.json"))
+    if not ranking_paths:
+        raise ValueError(f"No ranking JSON files found in {rankings_dir}")
+
+    rows: list[dict[str, Any]] = []
+    summary: dict[str, Any] = {}
+    for ranking_path in ranking_paths:
+        payload = json.loads(ranking_path.read_text(encoding="utf-8"))
+        method = str(payload.get("method", ranking_path.stem))
+        method_rows: list[dict[str, Any]] = []
+        for scene_id in expected_scenes:
+            ranking = normalize_ranking(payload.get("scenes", {}).get(scene_id, []), expected_ids)
+            ordered = [str(item["outfit_id"]) for item in ranking]
+            positions = {outfit_id: index for index, outfit_id in enumerate(ordered)}
+            decisive = 0
+            decisive_correct = 0.0
+            agreement_total = 0.0
+            for comparison in by_scene[scene_id]:
+                left = str(comparison["left_outfit_id"])
+                right = str(comparison["right_outfit_id"])
+                winner = comparison["outcomes"]["overall"]["winner"]
+                if winner is None:
+                    agreement_total += 0.5
+                    continue
+                loser = right if winner == left else left
+                correct = positions[winner] < positions[loser]
+                decisive += 1
+                decisive_correct += float(correct)
+                agreement_total += float(correct)
+            overall_ratings = ratings["scenes"][scene_id]["criteria"]["overall"]
+            elo_order = [str(item["outfit_id"]) for item in overall_ratings]
+            elo_by_id = {str(item["outfit_id"]): float(item["rating"]) for item in overall_ratings}
+            row: dict[str, Any] = {
+                "method": method,
+                "scene_id": scene_id,
+                "coverage": len(ordered) / len(expected_ids),
+                "pairwise_agreement": agreement_total / len(by_scene[scene_id]),
+                "decisive_pairwise_accuracy": (
+                    decisive_correct / decisive if decisive else 0.5
+                ),
+                "kendall_tau": _kendall_tau(ordered, elo_order),
+            }
+            for k in ks:
+                row[f"top{k}_overlap"] = len(set(ordered[:k]) & set(elo_order[:k])) / k
+                row[f"mean_elo@{k}"] = statistics.fmean(elo_by_id[item] for item in ordered[:k])
+            rows.append(row)
+            method_rows.append(row)
+        method_summary: dict[str, Any] = {"scene_count": len(method_rows), "coverage": 1.0}
+        metric_names = [
+            "pairwise_agreement",
+            "decisive_pairwise_accuracy",
+            "kendall_tau",
+            *[f"top{k}_overlap" for k in ks],
+            *[f"mean_elo@{k}" for k in ks],
+        ]
+        for metric in metric_names:
+            values = [float(row[metric]) for row in method_rows]
+            method_summary[metric] = statistics.fmean(values)
+            method_summary[f"{metric}_std"] = statistics.stdev(values) if len(values) > 1 else 0.0
+        summary[method] = method_summary
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "per_scene.csv").open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    result = {
+        "version": 2,
+        "evaluation_protocol": "pairwise-elo-v1",
+        "scene_count": len(expected_scenes),
+        "outfit_count": len(expected_ids),
+        "manifest_fingerprint": manifest_fingerprint(manifest),
+        "cutoffs": list(ks),
+        "primary_metric": "pairwise_agreement",
+        "metrics": summary,
+    }
+    write_json(output_dir / "summary.json", result)
+    return result

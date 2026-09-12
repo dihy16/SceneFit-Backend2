@@ -24,7 +24,16 @@ from app.services.benchmark.gemini_judge import (
     JudgmentBatch,
     OutfitJudgment,
 )
-from app.services.benchmark.metrics import evaluate_benchmark, ndcg
+from app.services.benchmark.metrics import (
+    evaluate_benchmark,
+    evaluate_pairwise_benchmark,
+    ndcg,
+)
+from app.services.benchmark.pairwise import (
+    run_pairwise_judging,
+    validate_pairwise_judge,
+)
+from app.services.benchmark.pairwise_judge import CRITERIA, PROMPT_VERSION
 from scripts.benchmark import build_parser as build_benchmark_parser
 from scripts.run_benchmark_colab import build_parser as build_colab_parser
 from scripts.run_benchmark_runtime import (
@@ -49,6 +58,41 @@ class FakeJudge:
         return [
             {"outfit_id": outfit_id, "score": index + 1, "reason": "fixture"}
             for index, (outfit_id, _) in enumerate(outfits)
+        ]
+
+
+class FakePairwiseJudge:
+    model_name = "fake-pairwise"
+    prompt_version = PROMPT_VERSION
+
+    def compare_batch(self, scene_path, pairs):
+        return [
+            {
+                "pair_id": pair_id,
+                "decisions": [
+                    {"criterion": criterion, "winner": "left", "reason": "fixture"}
+                    for criterion in CRITERIA
+                ],
+            }
+            for pair_id, _, _ in pairs
+        ]
+
+
+class ConsistentFakePairwiseJudge(FakePairwiseJudge):
+    def compare_batch(self, scene_path, pairs):
+        return [
+            {
+                "pair_id": pair_id,
+                "decisions": [
+                    {
+                        "criterion": criterion,
+                        "winner": "left" if left.name < right.name else "right",
+                        "reason": "fixture",
+                    }
+                    for criterion in CRITERIA
+                ],
+            }
+            for pair_id, left, right in pairs
         ]
 
 
@@ -320,6 +364,64 @@ class BenchmarkTests(unittest.TestCase):
         self.assertAlmostEqual(ndcg(labels, labels, 4), 1.0)
         self.assertLess(ndcg(list(reversed(labels)), labels, 4), 1.0)
 
+    def test_pairwise_judge_is_mirrored_resumable_and_validated(self):
+        (self.outfits / "outfit_3.png").write_bytes(b"outfit-3")
+        manifest = create_manifest(self.root, self.scenes, self.outfits, 2, 4, seed=42)
+        output = self.root / "pairwise"
+        judge = FakePairwiseJudge()
+        self.assertEqual(
+            run_pairwise_judging(
+                manifest, self.root, output, judge, rounds=2, pairs_per_request=1
+            ),
+            8,
+        )
+        self.assertEqual(
+            validate_pairwise_judge(
+                manifest, output, judge.model_name, rounds=2, pairs_per_request=1
+            ),
+            8,
+        )
+        self.assertEqual(
+            run_pairwise_judging(
+                manifest, self.root, output, judge, rounds=2, pairs_per_request=1
+            ),
+            0,
+        )
+        responses = [
+            json.loads(line)
+            for line in (output / "judge_responses.jsonl").read_text().splitlines()
+        ]
+        self.assertEqual(len(responses), 16)
+        ratings = json.loads((output / "ratings.json").read_text())
+        overall = ratings["scenes"][manifest["scenes"][0]["id"]]["criteria"]["overall"]
+        self.assertEqual(len(overall), 4)
+
+    def test_pairwise_metrics_reward_an_elo_ordered_ranking(self):
+        (self.outfits / "outfit_3.png").write_bytes(b"outfit-3")
+        manifest = create_manifest(self.root, self.scenes, self.outfits, 2, 4, seed=42)
+        judge_dir = self.root / "pairwise"
+        judge = ConsistentFakePairwiseJudge()
+        run_pairwise_judging(manifest, self.root, judge_dir, judge, rounds=2)
+        rankings_dir = self.root / "rankings"
+        ratings = json.loads((judge_dir / "ratings.json").read_text())
+        scenes = {}
+        for scene in manifest["scenes"]:
+            ordered = ratings["scenes"][scene["id"]]["criteria"]["overall"]
+            scenes[scene["id"]] = [
+                {"outfit_id": item["outfit_id"], "rank": item["rank"], "raw_score": None}
+                for item in ordered
+            ]
+        write_json(rankings_dir / "ideal.json", {"version": 1, "method": "ideal", "scenes": scenes})
+        result = evaluate_pairwise_benchmark(
+            manifest,
+            judge_dir / "comparisons.jsonl",
+            judge_dir / "ratings.json",
+            rankings_dir,
+            self.root / "output",
+        )
+        self.assertAlmostEqual(result["metrics"]["ideal"]["pairwise_agreement"], 1.0)
+        self.assertAlmostEqual(result["metrics"]["ideal"]["kendall_tau"], 1.0)
+
     def test_gemini_retries(self):
         client = FakeClient()
         judge = GeminiJudge(client=client, base_delay=0, sleep=lambda _: None)
@@ -387,7 +489,7 @@ class BenchmarkTests(unittest.TestCase):
         run_dir.mkdir()
         (run_dir / "manifest.json").write_text("{}", encoding="utf-8")
         state = {
-            "version": 2,
+            "version": 3,
             "configuration": {"model": DEFAULT_JUDGE_MODEL},
             "pilot_completed": True,
             "judged_scene_indices": [0],
