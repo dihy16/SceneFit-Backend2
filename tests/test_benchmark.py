@@ -46,6 +46,10 @@ from app.services.benchmark.llama_cpp_judge import (
     DEFAULT_LOCAL_JUDGE_MODEL,
     PairwiseLlamaCppJudge,
 )
+from app.services.benchmark.transformers_judge import (
+    DEFAULT_TRANSFORMERS_JUDGE_MODEL,
+    PairwiseTransformersJudge,
+)
 from scripts.benchmark import build_parser as build_benchmark_parser
 from scripts.run_benchmark_colab import build_parser as build_colab_parser
 from scripts.run_benchmark_runtime import (
@@ -543,6 +547,43 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(len(image_parts), 3)
         self.assertTrue(image_parts[0]["image_url"]["url"].startswith("data:image/"))
         self.assertEqual(judge.artifact_metadata()["judge_backend"], "llama-cpp")
+
+    def test_transformers_judge_parses_json_and_marks_nf4_artifacts(self):
+        response = json.dumps(
+            {
+                "pairs": [
+                    {
+                        "pair_id": "p1",
+                        "decisions": [
+                            {
+                                "criterion": criterion,
+                                "winner": "left",
+                                "reason": "fixture",
+                            }
+                            for criterion in CRITERIA
+                        ],
+                    }
+                ]
+            }
+        )
+        parsed = PairwiseTransformersJudge._parse_json("```json\n" + response + "\n```")
+        self.assertEqual(parsed.pairs[0].pair_id, "p1")
+        self.assertEqual(
+            PairwiseTransformersJudge(
+                model=object(), processor=object(), max_attempts=1
+            ).artifact_metadata(),
+            {
+                "judge_backend": "transformers-bnb-4bit",
+                "judge_quantization": "bitsandbytes-nf4-4bit",
+            },
+        )
+        self.assertEqual(DEFAULT_TRANSFORMERS_JUDGE_MODEL, "google/gemma-4-26B-A4B-it")
+
+    def test_benchmark_parser_accepts_transformers_nf4_backend(self):
+        args = build_benchmark_parser().parse_args(
+            ["pilot", "--judge-backend", "transformers-bnb-4bit"]
+        )
+        self.assertEqual(args.judge_backend, "transformers-bnb-4bit")
 
     def test_pairwise_validation_rejects_wrong_backend(self):
         (self.outfits / "outfit_3.png").write_bytes(b"outfit-3")

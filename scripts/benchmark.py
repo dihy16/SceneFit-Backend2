@@ -50,6 +50,10 @@ from app.services.benchmark.llama_cpp_judge import (
     DEFAULT_LOCAL_REQUEST_TIMEOUT,
     PairwiseLlamaCppJudge,
 )
+from app.services.benchmark.transformers_judge import (
+    DEFAULT_TRANSFORMERS_JUDGE_MODEL,
+    PairwiseTransformersJudge,
+)
 
 
 DEFAULT_RUN_DIR = REPO_ROOT / "results" / "benchmark" / "latest"
@@ -87,7 +91,11 @@ def _add_manifest_inputs(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_pairwise_backend_inputs(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--judge-backend", choices=("gemini", "llama-cpp"), default="gemini")
+    parser.add_argument(
+        "--judge-backend",
+        choices=("gemini", "llama-cpp", "transformers-bnb-4bit"),
+        default="gemini",
+    )
     parser.add_argument("--judge-base-url", default=DEFAULT_LOCAL_JUDGE_BASE_URL)
     parser.add_argument("--request-timeout", type=float, default=DEFAULT_LOCAL_REQUEST_TIMEOUT)
 
@@ -102,6 +110,11 @@ def _pairwise_judge(args: argparse.Namespace):
         )
         judge.verify_server()
         return judge
+    if args.judge_backend == "transformers-bnb-4bit":
+        return PairwiseTransformersJudge(
+            model_name=args.model,
+            max_attempts=args.max_attempts,
+        )
     return PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
 
 
@@ -250,6 +263,12 @@ def _scene_id(manifest: dict, scene_index: int) -> str:
 
 def main() -> int:
     args = build_parser().parse_args()
+    if (
+        hasattr(args, "judge_backend")
+        and args.judge_backend == "transformers-bnb-4bit"
+        and args.model == DEFAULT_JUDGE_MODEL
+    ):
+        args.model = DEFAULT_TRANSFORMERS_JUDGE_MODEL
     if args.command == "manifest":
         manifest = _create_manifest(args, args.output)
         print(f"Wrote {len(manifest['scenes'])} scenes and {len(manifest['outfits'])} outfits to {args.output}")

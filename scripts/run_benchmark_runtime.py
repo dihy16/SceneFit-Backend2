@@ -27,6 +27,7 @@ from app.services.benchmark.llama_cpp_judge import (
     DEFAULT_LOCAL_JUDGE_BASE_URL,
     DEFAULT_LOCAL_REQUEST_TIMEOUT,
 )
+from app.services.benchmark.transformers_judge import DEFAULT_TRANSFORMERS_JUDGE_MODEL
 
 
 DEFAULT_RUN_DIR = REPO_ROOT / "results" / "benchmark" / "latest"
@@ -49,7 +50,11 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     parser.add_argument("--max-attempts", type=int, default=3)
-    parser.add_argument("--judge-backend", choices=("gemini", "llama-cpp"), default="gemini")
+    parser.add_argument(
+        "--judge-backend",
+        choices=("gemini", "llama-cpp", "transformers-bnb-4bit"),
+        default="gemini",
+    )
     parser.add_argument("--judge-base-url", default=DEFAULT_LOCAL_JUDGE_BASE_URL)
     parser.add_argument("--request-timeout", type=float, default=DEFAULT_LOCAL_REQUEST_TIMEOUT)
     parser.add_argument("--methods", nargs="+", default=["clip", "aesthetic"])
@@ -389,6 +394,11 @@ def _retrieve(args: argparse.Namespace, state: dict[str, Any], configuration: di
 
 def main() -> int:
     args = build_parser().parse_args()
+    if (
+        args.judge_backend == "transformers-bnb-4bit"
+        and args.model == DEFAULT_JUDGE_MODEL
+    ):
+        args.model = DEFAULT_TRANSFORMERS_JUDGE_MODEL
     if args.num_scenes < 1 or args.num_outfits < 1 or args.batch_size < 1:
         raise ValueError("num-scenes, num-outfits, and batch-size must be positive")
 

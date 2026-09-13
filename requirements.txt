@@ -4,6 +4,8 @@ fastapi
 onnxruntime
 torch
 transformers
+accelerate
+bitsandbytes
 trimesh 
 pyrender 
 pyglet 
