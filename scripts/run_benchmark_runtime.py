@@ -18,9 +18,14 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.services.benchmark.gemini_judge import DEFAULT_JUDGE_MODEL
 from app.services.benchmark.pairwise import (
+    DEFAULT_CONCURRENCY,
     DEFAULT_PAIRS_PER_REQUEST,
     DEFAULT_ROUNDS,
     PROTOCOL as PAIRWISE_PROTOCOL,
+)
+from app.services.benchmark.llama_cpp_judge import (
+    DEFAULT_LOCAL_JUDGE_BASE_URL,
+    DEFAULT_LOCAL_REQUEST_TIMEOUT,
 )
 
 
@@ -42,7 +47,11 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
     parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     parser.add_argument("--max-attempts", type=int, default=3)
+    parser.add_argument("--judge-backend", choices=("gemini", "llama-cpp"), default="gemini")
+    parser.add_argument("--judge-base-url", default=DEFAULT_LOCAL_JUDGE_BASE_URL)
+    parser.add_argument("--request-timeout", type=float, default=DEFAULT_LOCAL_REQUEST_TIMEOUT)
     parser.add_argument("--methods", nargs="+", default=["clip", "aesthetic"])
     parser.add_argument(
         "--config",
@@ -96,6 +105,8 @@ def _configuration(args: argparse.Namespace) -> dict[str, Any]:
         "protocol": args.protocol,
         "rounds": args.rounds,
         "pairs_per_request": args.pairs_per_request,
+        "judge_backend": args.judge_backend,
+        "judge_base_url": args.judge_base_url,
         "methods": args.methods,
     }
 
@@ -193,6 +204,12 @@ def _judge(args: argparse.Namespace, state: dict[str, Any], configuration: dict[
                 str(args.max_attempts),
                 "--protocol",
                 args.protocol,
+                "--judge-backend",
+                args.judge_backend,
+                "--judge-base-url",
+                args.judge_base_url,
+                "--request-timeout",
+                str(args.request_timeout),
             ]
         )
         current["pilot_completed"] = True
@@ -224,6 +241,14 @@ def _judge(args: argparse.Namespace, state: dict[str, Any], configuration: dict[
                 str(args.rounds),
                 "--pairs-per-request",
                 str(args.pairs_per_request),
+                "--concurrency",
+                str(args.concurrency),
+                "--judge-backend",
+                args.judge_backend,
+                "--judge-base-url",
+                args.judge_base_url,
+                "--request-timeout",
+                str(args.request_timeout),
             ]
         )
         completed.add(scene_index)
@@ -241,6 +266,7 @@ def _judge(args: argparse.Namespace, state: dict[str, Any], configuration: dict[
             "validate-judge", "--manifest", str(manifest_path), "--judge-dir", str(args.run_dir),
             "--model", args.model, "--rounds", str(args.rounds),
             "--pairs-per-request", str(args.pairs_per_request),
+            "--judge-backend", args.judge_backend,
         ])
     else:
         validation.extend([
@@ -270,6 +296,7 @@ def _retrieve(args: argparse.Namespace, state: dict[str, Any], configuration: di
             "validate-judge", "--manifest", str(manifest_path), "--judge-dir", str(args.run_dir),
             "--model", args.model, "--rounds", str(args.rounds),
             "--pairs-per-request", str(args.pairs_per_request),
+            "--judge-backend", args.judge_backend,
         ])
     else:
         validation.extend([
@@ -323,6 +350,8 @@ def _retrieve(args: argparse.Namespace, state: dict[str, Any], configuration: di
                 str(args.rounds),
                 "--pairs-per-request",
                 str(args.pairs_per_request),
+                "--judge-backend",
+                args.judge_backend,
                 "--methods",
                 *args.methods,
             ]

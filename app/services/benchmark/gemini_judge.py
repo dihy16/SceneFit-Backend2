@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 PROMPT_VERSION = "scene-outfit-compatibility-v1"
-DEFAULT_JUDGE_MODEL = "gemma-4-31b-it"
+DEFAULT_JUDGE_MODEL = "gemma-4-26b-a4b-it"
 
 
 class OutfitJudgment(BaseModel):

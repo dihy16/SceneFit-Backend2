@@ -37,6 +37,7 @@ from app.services.benchmark.gemini_judge import (
 )
 from app.services.benchmark.metrics import evaluate_benchmark, evaluate_pairwise_benchmark
 from app.services.benchmark.pairwise import (
+    DEFAULT_CONCURRENCY,
     DEFAULT_PAIRS_PER_REQUEST,
     DEFAULT_ROUNDS,
     PROTOCOL as PAIRWISE_PROTOCOL,
@@ -44,6 +45,11 @@ from app.services.benchmark.pairwise import (
     validate_pairwise_judge,
 )
 from app.services.benchmark.pairwise_judge import PairwiseGeminiJudge
+from app.services.benchmark.llama_cpp_judge import (
+    DEFAULT_LOCAL_JUDGE_BASE_URL,
+    DEFAULT_LOCAL_REQUEST_TIMEOUT,
+    PairwiseLlamaCppJudge,
+)
 
 
 DEFAULT_RUN_DIR = REPO_ROOT / "results" / "benchmark" / "latest"
@@ -80,6 +86,25 @@ def _add_manifest_inputs(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--seed", type=int, default=42)
 
 
+def _add_pairwise_backend_inputs(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--judge-backend", choices=("gemini", "llama-cpp"), default="gemini")
+    parser.add_argument("--judge-base-url", default=DEFAULT_LOCAL_JUDGE_BASE_URL)
+    parser.add_argument("--request-timeout", type=float, default=DEFAULT_LOCAL_REQUEST_TIMEOUT)
+
+
+def _pairwise_judge(args: argparse.Namespace):
+    if args.judge_backend == "llama-cpp":
+        judge = PairwiseLlamaCppJudge(
+            model_name=args.model,
+            base_url=args.judge_base_url,
+            max_attempts=args.max_attempts,
+            request_timeout=args.request_timeout,
+        )
+        judge.verify_server()
+        return judge
+    return PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+
+
 def _create_manifest(args: argparse.Namespace, path: Path) -> dict:
     manifest = create_manifest(
         root=REPO_ROOT,
@@ -112,6 +137,13 @@ def build_parser() -> argparse.ArgumentParser:
     judge_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
     judge_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     judge_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    judge_parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=DEFAULT_CONCURRENCY,
+        help="simultaneous pairwise judge requests within a Swiss round",
+    )
+    _add_pairwise_backend_inputs(judge_parser)
 
     pilot_parser = subparsers.add_parser(
         "pilot", help="score one pair without writing benchmark judgments"
@@ -122,6 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     pilot_parser.add_argument("--outfit-index", type=int, default=0)
     pilot_parser.add_argument("--max-attempts", type=int, default=3)
     pilot_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
+    _add_pairwise_backend_inputs(pilot_parser)
 
     validation_parser = subparsers.add_parser(
         "validate-judgments",
@@ -140,6 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
     pairwise_validation_parser.add_argument("--model", default=DEFAULT_JUDGE_MODEL)
     pairwise_validation_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     pairwise_validation_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    _add_pairwise_backend_inputs(pairwise_validation_parser)
 
     collect_parser = subparsers.add_parser("collect", help="collect or resume live worker rankings")
     collect_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
@@ -154,6 +188,7 @@ def build_parser() -> argparse.ArgumentParser:
     collect_parser.add_argument("--judge-dir", type=_path, default=DEFAULT_RUN_DIR)
     collect_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     collect_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    _add_pairwise_backend_inputs(collect_parser)
 
     scene_parser = subparsers.add_parser(
         "scene", help="judge then collect one scene as a resumable checkpoint"
@@ -170,6 +205,8 @@ def build_parser() -> argparse.ArgumentParser:
     scene_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
     scene_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     scene_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    scene_parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
+    _add_pairwise_backend_inputs(scene_parser)
 
     evaluate_parser = subparsers.add_parser("evaluate", help="evaluate cached rankings")
     evaluate_parser.add_argument("--manifest", type=_path, default=DEFAULT_RUN_DIR / "manifest.json")
@@ -198,6 +235,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
     run_parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     run_parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    run_parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
+    _add_pairwise_backend_inputs(run_parser)
     return parser
 
 
@@ -224,11 +263,11 @@ def main() -> int:
             else None
         )
         if args.protocol == PAIRWISE_PROTOCOL:
-            judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            judge = _pairwise_judge(args)
             judge_dir = args.judge_dir or args.output.parent
             count = run_pairwise_judging(
                 manifest, REPO_ROOT, judge_dir, judge,
-                args.rounds, args.pairs_per_request, scene_ids,
+                args.rounds, args.pairs_per_request, scene_ids, args.concurrency,
             )
             print(f"Appended {count} pairwise comparisons to {judge_dir}")
         else:
@@ -250,7 +289,7 @@ def main() -> int:
         outfit = manifest["outfits"][args.outfit_index]
         if args.protocol == PAIRWISE_PROTOCOL:
             other = manifest["outfits"][(args.outfit_index + 1) % len(manifest["outfits"])]
-            judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            judge = _pairwise_judge(args)
             result = judge.compare_batch(
                 REPO_ROOT / scene["path"],
                 [("pilot", REPO_ROOT / outfit["path"], REPO_ROOT / other["path"])],
@@ -280,7 +319,8 @@ def main() -> int:
     if args.command == "validate-judge":
         manifest = load_manifest(args.manifest)
         count = validate_pairwise_judge(
-            manifest, args.judge_dir, args.model, args.rounds, args.pairs_per_request
+            manifest, args.judge_dir, args.model, args.rounds, args.pairs_per_request,
+            args.judge_backend,
         )
         print(f"Pairwise judge complete: {count} comparisons")
         return 0
@@ -289,7 +329,8 @@ def main() -> int:
         manifest = load_manifest(args.manifest)
         if args.protocol == PAIRWISE_PROTOCOL:
             validate_pairwise_judge(
-                manifest, args.judge_dir, args.model, args.rounds, args.pairs_per_request
+                manifest, args.judge_dir, args.model, args.rounds, args.pairs_per_request,
+                args.judge_backend,
             )
         else:
             validate_judgments(
@@ -315,13 +356,14 @@ def main() -> int:
         manifest = load_manifest(args.manifest)
         scene_id = _scene_id(manifest, args.scene_index)
         if args.protocol == PAIRWISE_PROTOCOL:
-            judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+            judge = _pairwise_judge(args)
             count = run_pairwise_judging(
                 manifest, REPO_ROOT, args.judgments.parent, judge,
-                args.rounds, args.pairs_per_request, [scene_id],
+                args.rounds, args.pairs_per_request, [scene_id], args.concurrency,
             )
             validate_pairwise_judge(
-                manifest, args.judgments.parent, args.model, args.rounds, args.pairs_per_request
+                manifest, args.judgments.parent, args.model, args.rounds, args.pairs_per_request,
+                args.judge_backend,
             )
         else:
             judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
@@ -413,12 +455,19 @@ def main() -> int:
     manifest_path = run_dir / "manifest.json"
     manifest = load_manifest(manifest_path) if manifest_path.exists() else _create_manifest(args, manifest_path)
     if args.protocol == PAIRWISE_PROTOCOL:
-        judge = PairwiseGeminiJudge(model_name=args.model, max_attempts=args.max_attempts)
+        judge = _pairwise_judge(args)
         run_pairwise_judging(
-            manifest, REPO_ROOT, run_dir, judge, args.rounds, args.pairs_per_request
+            manifest,
+            REPO_ROOT,
+            run_dir,
+            judge,
+            args.rounds,
+            args.pairs_per_request,
+            concurrency=args.concurrency,
         )
         validate_pairwise_judge(
-            manifest, run_dir, args.model, args.rounds, args.pairs_per_request
+            manifest, run_dir, args.model, args.rounds, args.pairs_per_request,
+            args.judge_backend,
         )
     else:
         judge = GeminiJudge(model_name=args.model, max_attempts=args.max_attempts)

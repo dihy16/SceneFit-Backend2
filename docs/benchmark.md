@@ -20,8 +20,10 @@ for the same scene across climate/season, activity/occasion, style/theme, color
 harmony, and overall suitability. Each comparison is repeated with sides
 reversed; only matching choices become wins, and disagreements become ties.
 
-The default seven Swiss rounds create 350 comparisons per scene (3,500 total),
-stored as `judge_responses.jsonl`, `comparisons.jsonl`, `judge.meta.json`, and
+The default judge is `gemma-4-26b-a4b-it`. Seven Swiss rounds create 350
+comparisons per scene (3,500 total). The default submits one pair per request
+with up to five concurrent requests. Artifacts are stored as
+`judge_responses.jsonl`, `comparisons.jsonl`, `judge.meta.json`, and
 `ratings.json`. Results use pairwise agreement, decisive accuracy, Kendall tau,
 top-k overlap, and mean Elo rather than nDCG. Use a fresh benchmark directory;
 pairwise artifacts cannot be mixed with older `judgments.jsonl` runs.
@@ -37,6 +39,9 @@ To score already-collected rankings with a new pairwise judge, keep the
 existing manifest and rankings, point `judge` and `validate-judge` at a fresh
 `--judge-dir`, then pass that directory to `evaluate --judge-dir`. The Gradio
 viewer accepts the same separate `--judge-dir` argument.
+
+For a local Q4 Gemma 4 26B A4B judge on Vast.ai, see
+[the local llama.cpp runbook](vast_ai_local_gemma_judge.md).
 
 ## Colab notebook workflow
 

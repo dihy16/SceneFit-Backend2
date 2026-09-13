@@ -10,8 +10,8 @@ from typing import Any, Callable, Literal, Sequence
 from pydantic import BaseModel, Field
 
 
-PROMPT_VERSION = "scenefit-pairwise-elo-v1"
-DEFAULT_JUDGE_MODEL = "gemma-4-31b-it"
+PROMPT_VERSION = "scenefit-pairwise-elo-v2-fewshot"
+DEFAULT_JUDGE_MODEL = "gemma-4-26b-a4b-it"
 CRITERIA = (
     "climate_season",
     "activity_occasion",
@@ -30,7 +30,7 @@ class CriterionDecision(BaseModel):
         "overall",
     ]
     winner: Literal["left", "right", "tie"]
-    reason: str = Field(max_length=240)
+    reason: str = Field(max_length=160)
 
 
 class PairDecision(BaseModel):
@@ -55,8 +55,29 @@ For each pair, independently choose left, right, or tie for these criteria:
 - overall: overall outfit suitability for this scene.
 
 Ignore image quality, pose, body shape, and presentation. Use tie only when the
-two outfits are genuinely equally suitable. Return exactly one decision for every
-criterion of every supplied pair ID.
+two outfits are genuinely equally suitable. Give one short reason of at most 20
+words for each decision.
+
+CALIBRATION EXAMPLES (text-only; do not copy their choices into the live batch):
+
+Example A -- RIGHT should win overall:
+Scene: a snowy outdoor commute. LEFT: a thin linen summer outfit. RIGHT: an
+insulated coat and boots. Expected: RIGHT for climate_season,
+activity_occasion, and overall. Judge style_theme and color_harmony separately
+from warmth rather than automatically choosing RIGHT for every criterion.
+
+Example B -- LEFT should win overall:
+Scene: an elegant evening gallery opening. LEFT: understated tailored formalwear.
+RIGHT: neon gym clothing. Expected: LEFT for activity_occasion, style_theme, and
+overall. Climate_season may be a tie when the indoor climate is not evident.
+
+Example C -- a genuine tie is appropriate:
+Scene: a mild-weather casual park visit. LEFT and RIGHT are similarly casual,
+weather-appropriate outfits with equally harmonious colors. Expected: TIE where
+there is no meaningful compatibility difference, including overall.
+
+Apply the rubric independently to the live image pairs below. The examples are
+balanced deliberately and do not imply a preferred side.
 """
 
 
@@ -103,8 +124,15 @@ class PairwiseGeminiJudge:
         scene_path: Path,
         pairs: Sequence[tuple[str, Path, Path]],
     ) -> list[Any]:
+        completion_instruction = self._completion_instruction(pairs)
         if self._types is None:
-            return [RUBRIC, scene_path, *[item for pair in pairs for item in pair]]
+            return [
+                RUBRIC,
+                "SCENE:",
+                scene_path,
+                *[item for pair in pairs for item in pair],
+                completion_instruction,
+            ]
         parts: list[Any] = [RUBRIC, "SCENE:"]
         parts.append(
             self._types.Part.from_bytes(
@@ -124,7 +152,27 @@ class PairwiseGeminiJudge:
                     data=right_path.read_bytes(), mime_type=self._mime_type(right_path)
                 )
             )
+        parts.append(completion_instruction)
         return parts
+
+    @staticmethod
+    def _completion_instruction(
+        pairs: Sequence[tuple[str, Path, Path]],
+    ) -> str:
+        pair_ids = [pair_id for pair_id, _, _ in pairs]
+        numbered_ids = "\n".join(
+            f"{index}. {pair_id}" for index, pair_id in enumerate(pair_ids, 1)
+        )
+        count = len(pair_ids)
+        return f"""LIVE-BATCH COMPLETENESS CHECK
+
+Return exactly {count} pair objects in the same order, one for each required ID:
+{numbered_ids}
+
+Before responding, verify that every required ID appears exactly once, no other
+ID appears, and every pair contains all five criteria exactly once. Do not stop
+early: the response is incomplete unless it contains all {count} pair objects.
+"""
 
     def compare_batch(
         self,
@@ -133,9 +181,18 @@ class PairwiseGeminiJudge:
     ) -> list[dict[str, Any]]:
         """Return one complete five-criterion decision for every pair ID."""
         expected_ids = [pair_id for pair_id, _, _ in pairs]
+        pair_by_id = {
+            pair_id: (pair_id, left_path, right_path)
+            for pair_id, left_path, right_path in pairs
+        }
+        if len(pair_by_id) != len(expected_ids):
+            raise ValueError("Pair request contains duplicate pair IDs")
+        collected: dict[str, dict[str, Any]] = {}
         last_error: Exception | None = None
         for attempt in range(self.max_attempts):
             try:
+                pending_ids = [pair_id for pair_id in expected_ids if pair_id not in collected]
+                pending_pairs = [pair_by_id[pair_id] for pair_id in pending_ids]
                 config: Any = {
                     "temperature": 0,
                     "response_mime_type": "application/json",
@@ -147,10 +204,13 @@ class PairwiseGeminiJudge:
                         thinking_config=self._types.ThinkingConfig(thinking_level="minimal"),
                         response_mime_type="application/json",
                         response_schema=PairDecisionBatch,
+                        automatic_function_calling=self._types.AutomaticFunctionCallingConfig(
+                            disable=True
+                        ),
                     )
                 response = self.client.models.generate_content(
                     model=self.model_name,
-                    contents=self._contents(scene_path, pairs),
+                    contents=self._contents(scene_path, pending_pairs),
                     config=config,
                 )
                 parsed = response.parsed
@@ -159,28 +219,42 @@ class PairwiseGeminiJudge:
                 if isinstance(parsed, dict):
                     parsed = PairDecisionBatch.model_validate(parsed)
                 received = {item.pair_id: item for item in parsed.pairs}
-                if set(received) != set(expected_ids) or len(received) != len(parsed.pairs):
+                if len(received) != len(parsed.pairs):
+                    raise ValueError("Judge returned duplicate pair IDs")
+                unexpected = set(received) - set(pending_ids)
+                if unexpected:
                     raise ValueError(
-                        f"Judge returned pair IDs {sorted(received)}; expected {expected_ids}"
+                        f"Judge returned unexpected pair IDs {sorted(unexpected)}; "
+                        f"pending IDs are {pending_ids}"
                     )
-                result: list[dict[str, Any]] = []
-                for pair_id in expected_ids:
-                    decision = received[pair_id]
+                for pair_id, decision in received.items():
                     by_criterion = {item.criterion: item for item in decision.decisions}
                     if set(by_criterion) != set(CRITERIA) or len(by_criterion) != len(decision.decisions):
                         raise ValueError(
                             f"Pair {pair_id} did not return exactly the required criteria"
                         )
-                    result.append(
-                        {
-                            "pair_id": pair_id,
-                            "decisions": [
-                                by_criterion[criterion].model_dump()
-                                for criterion in CRITERIA
-                            ],
-                        }
-                    )
-                return result
+                    collected[pair_id] = {
+                        "pair_id": pair_id,
+                        "decisions": [
+                            by_criterion[criterion].model_dump()
+                            for criterion in CRITERIA
+                        ],
+                    }
+                missing_ids = [pair_id for pair_id in expected_ids if pair_id not in collected]
+                if not missing_ids:
+                    return [collected[pair_id] for pair_id in expected_ids]
+                last_error = ValueError(
+                    f"Judge omitted pair IDs {missing_ids}; received "
+                    f"{sorted(received)} in this response"
+                )
+                print(
+                    f"[PAIRWISE] Attempt {attempt + 1}/{self.max_attempts} returned "
+                    f"{len(received)}/{len(pending_ids)} pending pairs; retrying only "
+                    f"{missing_ids}",
+                    flush=True,
+                )
+                if attempt + 1 < self.max_attempts:
+                    self.sleep(self.base_delay * (2**attempt))
             except Exception as exc:
                 last_error = exc
                 print(
@@ -190,4 +264,7 @@ class PairwiseGeminiJudge:
                 )
                 if attempt + 1 < self.max_attempts:
                     self.sleep(self.base_delay * (2**attempt))
-        raise RuntimeError("Pairwise Gemini judging failed") from last_error
+        missing_ids = [pair_id for pair_id in expected_ids if pair_id not in collected]
+        raise RuntimeError(
+            f"Pairwise Gemini judging failed with unresolved pair IDs {missing_ids}"
+        ) from last_error

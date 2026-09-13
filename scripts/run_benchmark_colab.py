@@ -22,6 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.services.benchmark.gemini_judge import DEFAULT_JUDGE_MODEL
 from app.services.benchmark.pairwise import (
+    DEFAULT_CONCURRENCY,
     DEFAULT_PAIRS_PER_REQUEST,
     DEFAULT_ROUNDS,
     PROTOCOL as PAIRWISE_PROTOCOL,
@@ -155,6 +156,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--protocol", choices=[PAIRWISE_PROTOCOL, "absolute-1to5"], default=PAIRWISE_PROTOCOL)
     parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
     parser.add_argument("--pairs-per-request", type=int, default=DEFAULT_PAIRS_PER_REQUEST)
+    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--methods", nargs="+", default=None)
     stages = parser.add_mutually_exclusive_group()
@@ -319,6 +321,7 @@ def main() -> int:
                 "--protocol", args.protocol,
                 "--rounds", str(args.rounds),
                 "--pairs-per-request", str(args.pairs_per_request),
+                "--concurrency", str(args.concurrency),
             ]
             _run_and_archive(args.session, command, state(), args.timeout)
             archive = output_dir / f"judge-scene-{scene_index + 1:03d}.zip"

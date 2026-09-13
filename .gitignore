@@ -17,3 +17,4 @@ data
 /app/testing/images
 results/benchmark/
 benchmark_data.zip
+storage/
