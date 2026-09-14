@@ -33,6 +33,7 @@ from app.services.benchmark.metrics import (
 from app.services.benchmark.pairwise import (
     DEFAULT_CONCURRENCY,
     DEFAULT_PAIRS_PER_REQUEST,
+    _pair_round,
     run_pairwise_judging,
     validate_pairwise_judge,
 )
@@ -480,6 +481,18 @@ class BenchmarkTests(unittest.TestCase):
         ratings = json.loads((output / "ratings.json").read_text())
         overall = ratings["scenes"][manifest["scenes"][0]["id"]]["criteria"]["overall"]
         self.assertEqual(len(overall), 4)
+
+    def test_pairwise_matching_backtracks_past_a_greedy_dead_end(self):
+        outfits = ["a", "b", "c", "d", "e", "f"]
+        history = {
+            frozenset(pair)
+            for pair in (("e", "f"), ("e", "c"), ("e", "d"), ("f", "c"), ("f", "d"))
+        }
+
+        schedule = _pair_round(outfits, history, {}, "fixture", round_number=2)
+
+        self.assertEqual({outfit for pair in schedule for outfit in pair}, set(outfits))
+        self.assertTrue(all(frozenset(pair) not in history for pair in schedule))
 
     def test_pairwise_prompt_uses_balanced_few_shots_and_final_id_checklist(self):
         judge = PairwiseGeminiJudge(client=FakeClient())

@@ -134,6 +134,9 @@ def _pair_round(
         random.Random(seed).shuffle(ordered)
     else:
         ordered.sort(key=lambda outfit_id: (-points.get(outfit_id, 0.0), outfit_id))
+
+    # Preserve existing schedules for resumability. Use an exact matching search
+    # only when this historical greedy ordering reaches a dead end.
     remaining = ordered[:]
     pairs: list[tuple[str, str]] = []
     while remaining:
@@ -147,26 +150,49 @@ def _pair_round(
             None,
         )
         if candidate_index is None:
-            # At seven rounds with 100 candidates this should not occur. A swap
-            # with the latest pair retains a perfect matching without a rematch.
-            if not pairs:
-                raise ValueError("Unable to schedule a non-repeated comparison")
-            previous_left, previous_right = pairs.pop()
-            options = (
-                ((left, previous_left), (previous_right,)),
-                ((left, previous_right), (previous_left,)),
+            break
+        pairs.append((left, remaining.pop(candidate_index)))
+    else:
+        return pairs
+
+    order_index = {outfit_id: index for index, outfit_id in enumerate(ordered)}
+
+    def match(remaining: set[str]) -> list[tuple[str, str]] | None:
+        """Find a complete deterministic matching in the remaining graph."""
+        if not remaining:
+            return []
+
+        candidates_by_outfit = {
+            outfit_id: sorted(
+                (
+                    opponent
+                    for opponent in remaining
+                    if opponent != outfit_id
+                    and frozenset((outfit_id, opponent)) not in history
+                ),
+                key=order_index.__getitem__,
             )
-            for candidate_pair, replacement in options:
-                if frozenset(candidate_pair) not in history:
-                    pairs.append(candidate_pair)
-                    remaining = list(replacement) + remaining
-                    break
-            else:
-                raise ValueError("Unable to repair pairwise tournament matching")
-            continue
-        right = remaining.pop(candidate_index)
-        pairs.append((left, right))
-    return pairs
+            for outfit_id in remaining
+        }
+        # Pair the most constrained outfit first. Greedy pairing can leave two
+        # outfits that already faced each other despite a valid full matching.
+        left = min(
+            remaining,
+            key=lambda outfit_id: (
+                len(candidates_by_outfit[outfit_id]),
+                order_index[outfit_id],
+            ),
+        )
+        for right in candidates_by_outfit[left]:
+            result = match(remaining - {left, right})
+            if result is not None:
+                return [(left, right), *result]
+        return None
+
+    schedule = match(set(ordered))
+    if schedule is None:
+        raise ValueError("Unable to schedule a non-repeated comparison")
+    return schedule
 
 
 def _response_key(row: dict[str, Any]) -> tuple[str, str]:
